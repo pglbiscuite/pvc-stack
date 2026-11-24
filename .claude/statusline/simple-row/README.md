@@ -2,7 +2,7 @@
 
 A status line for Claude Code in one row: the model, the effort level, the context window, your usage limits and the ultracode switch.
 
-**Version:** 0.2.0
+**Version:** 0.3.0
 
 ```
 Opus 5.5 · max | context █░░░░░░░ 17% | week ░░░░░░░░ 0% | 5d 14h | ultracode ON
@@ -15,13 +15,15 @@ In the terminal the empty part of a bar is a dark slot. This page draws it as `�
 | Part | Meaning |
 |---|---|
 | `Opus 5.5` | The model of the session |
-| `max` | The effort level. The word `max` gets three colors |
+| `max` | The effort level, in a color for each level: `low` green, `medium` yellow, `high` orange, `xhigh` red. The word `max` gets three colors |
 | `context` | How full the context window is |
 | `5h` | The 5-hour usage limit, then the time left to its reset. It shows when your plan has such a limit |
 | `week` | The 7-day usage limit, then the time left to its reset |
 | `ultracode` | `ON` in pink or `OFF` in grey, from the `ultracode` key of your settings files |
 
 A bar turns yellow from 60 percent and red from 85 percent.
+
+The colors follow the palette of your terminal. Orange is the one exception: the basic palette has no orange, so the row uses a fixed color of the 256-color table for it.
 
 Claude Code sends the limits for a subscription login only. With an API key the row shows the model and the context window.
 
@@ -74,7 +76,7 @@ The flag `-ExecutionPolicy Bypass` is needed on most PCs. Windows at its default
 powershell -NoProfile -ExecutionPolicy Bypass -File statusline.ps1 -SelfTest
 ```
 
-It prints six sample rows and ends with `selftest: ok`.
+It prints six sample rows, then the effort words in their colors, and ends with `selftest: ok`.
 
 ## When the Row Stays Empty
 

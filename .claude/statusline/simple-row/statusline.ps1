@@ -5,7 +5,7 @@
 # From the left: the model, the effort level, the context window, then each usage limit that
 # the account has (5 hours, 7 days) with the time left to its reset, then the ultracode switch
 # of the settings files. The real row draws the bars as solid cells and puts a middle dot after
-# the model.
+# the model. The effort word has a color for each level.
 #
 # Claude Code sends the session as JSON on stdin: https://code.claude.com/docs/en/statusline
 # This file is plain ASCII. The bar cell and the dot are built from character codes, and the
@@ -28,11 +28,13 @@ $CELL = [string][char]0x2588      # one bar cell, a full block
 $DOT = [string][char]0x00B7       # the middle dot between the model and the effort
 $BAR_WIDTHS = @(8, 6, 4, 0)       # tried in this order until the row fits the terminal
 
-# The basic ANSI colors, so the row follows the terminal's own palette.
+# The basic ANSI colors, so the row follows the terminal's own palette. Orange is the one
+# exception: the basic palette has none, so it is a fixed color of the 256-color table.
 $COLOR = @{
     cyan   = $ESC + '[36m'
     green  = $ESC + '[32m'
     yellow = $ESC + '[33m'
+    orange = $ESC + '[38;5;208m'
     red    = $ESC + '[31m'
     blue   = $ESC + '[34m'
     grey   = $ESC + '[90m'
@@ -44,6 +46,9 @@ $RESET = $ESC + '[0m'
 
 # The usage limits in the order they are drawn: the key in rate_limits, then the label.
 $WINDOWS = @(@('five_hour', '5h'), @('seven_day', 'week'))
+
+# The color of each effort word. The word max gets three colors, and any other word stays plain.
+$EFFORT_TONES = @(@('low', 'green'), @('medium', 'yellow'), @('high', 'orange'), @('xhigh', 'red'))
 
 
 # ---------- reading the input ----------
@@ -191,6 +196,21 @@ function Add-Meter($segs, [string]$label, $pct, [int]$barWidth) {
     Add-Seg $segs $tone ('{0}%' -f $shown)
 }
 
+function Add-Effort($segs, [string]$effort) {
+    # The effort word in the color of its level. The letters of max get one color each.
+    if ($effort -ceq 'max') {
+        Add-Seg $segs 'red' 'm'
+        Add-Seg $segs 'yellow' 'a'
+        Add-Seg $segs 'blue' 'x'
+        return
+    }
+    $tone = 'none'
+    foreach ($pair in $EFFORT_TONES) {
+        if ($effort -ceq $pair[0]) { $tone = $pair[1] }
+    }
+    Add-Seg $segs $tone $effort
+}
+
 function Get-Row($data, [double]$now, [int]$barWidth, [bool]$times, $ultra) {
     # $ultra: $true or $false draws the ultracode part at the end, $null leaves it out.
     $segs = New-Object System.Collections.ArrayList
@@ -202,13 +222,7 @@ function Get-Row($data, [double]$now, [int]$barWidth, [bool]$times, $ultra) {
     $effort = Get-Text (Get-Field $data @('effort', 'level')) 10
     if ($effort) {
         Add-Seg $segs 'grey' (' ' + $DOT + ' ')
-        if ($effort -ceq 'max') {
-            Add-Seg $segs 'red' 'm'
-            Add-Seg $segs 'yellow' 'a'
-            Add-Seg $segs 'blue' 'x'
-        } else {
-            Add-Seg $segs 'none' $effort
-        }
+        Add-Effort $segs $effort
     }
     $fast = Get-Field $data @('fast_mode')
     if ($fast -is [bool] -and $fast) {
@@ -385,7 +399,7 @@ function Invoke-SelfTest {
     Test-Same 'both limits' (Get-PlainRow $both 200) ('Opus 5.5 ' + $DOT + ' high | context #####--- 63% | 5h ####---- 45% | 2h 58m | week #######- 91% | 5d 14h')
     Test-Same 'the bar before a time is grey' $painted.Contains($COLOR['grey'] + ' | ' + $RESET + $COLOR['green'] + '5d 14h' + $RESET) $true
     $painted = Get-Painted (Get-Fitted $both $now 200)
-    Test-Same 'another effort word is plain' $painted.Contains($DOT + ' ' + $RESET + 'high') $true
+    Test-Same 'high is orange' $painted.Contains($COLOR['orange'] + 'high' + $RESET) $true
     Test-Same '63 is yellow' $painted.Contains($COLOR['yellow'] + '63%' + $RESET) $true
     Test-Same '91 is red' $painted.Contains($COLOR['red'] + '91%' + $RESET) $true
 
@@ -399,6 +413,18 @@ function Invoke-SelfTest {
     Test-Same 'text that is no JSON' ($null -eq (ConvertFrom-Stdin 'not json {')) $true
     Test-Same 'empty text' ($null -eq (ConvertFrom-Stdin '   ')) $true
     Test-Same 'a byte-order mark' (Get-Field (ConvertFrom-Stdin (([string][char]0xFEFF) + '{"a":{"b":7}}')) @('a', 'b')) 7
+
+    # 4b. the color of each effort level
+    Test-Same 'orange is a color of the 256-color table' $COLOR['orange'] ($ESC + '[38;5;208m')
+    foreach ($pair in @(@('low', 'green'), @('medium', 'yellow'), @('high', 'orange'), @('xhigh', 'red'))) {
+        $leveled = Get-Sample ('{"model":{"display_name":"Opus 5.5"},"effort":{"level":"' + $pair[0] + '"},"context_window":{"used_percentage":1}}')
+        Test-Same ('the plain row with ' + $pair[0]) (Get-PlainRow $leveled 200) ('Opus 5.5 ' + $DOT + ' ' + $pair[0] + ' | context -------- 1%')
+        Test-Same ($pair[0] + ' is ' + $pair[1]) (Get-Painted (Get-Fitted $leveled $now 200)).Contains($RESET + $COLOR[$pair[1]] + $pair[0] + $RESET + $COLOR['grey']) $true
+    }
+    foreach ($word in @('turbo', 'High', 'MAX', 'xhig')) {
+        $leveled = Get-Sample ('{"model":{"display_name":"Opus 5.5"},"effort":{"level":"' + $word + '"},"context_window":{"used_percentage":1}}')
+        Test-Same ('a word that is no level stays plain: ' + $word) (Get-Painted (Get-Fitted $leveled $now 200)).Contains($RESET + $word + $COLOR['grey']) $true
+    }
 
     # 5. fast mode
     $fastRow = Get-Sample '{"model":{"display_name":"Opus 5.5"},"effort":{"level":"max"},"fast_mode":true,"context_window":{"used_percentage":1}}'
@@ -542,6 +568,13 @@ function Invoke-SelfTest {
         [Console]::Out.WriteLine('  ' + $sample[0])
         [Console]::Out.WriteLine('    ' + (Get-Painted (Get-Fitted $sample[1] $now 200 $sample[2])))
     }
+    $levels = New-Object System.Collections.ArrayList
+    foreach ($word in @('low', 'medium', 'high', 'xhigh', 'max')) {
+        if ($levels.Count -gt 0) { Add-Seg $levels 'none' '  ' }
+        Add-Effort $levels $word
+    }
+    [Console]::Out.WriteLine('  the effort levels')
+    [Console]::Out.WriteLine('    ' + (Get-Painted $levels))
     [Console]::Out.WriteLine('')
     if ($fails.Count -gt 0) {
         foreach ($fail in $fails) { [Console]::Out.WriteLine('FAIL ' + $fail) }

@@ -35,7 +35,7 @@ Made by Alexandru Bogdan. This is the setup I use with Claude Code every day, cl
 
 | Status line | Version | What it does |
 |---|---|---|
-| [simple-row](.claude/statusline/simple-row/) | 0.2.0 | One status row: the model, the effort level, the context window, your usage limits and the ultracode switch. |
+| [simple-row](.claude/statusline/simple-row/) | 0.3.0 | One status row: the model, the effort level, the context window, your usage limits and the ultracode switch. |
 
 **Templates**
 
