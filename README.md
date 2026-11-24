@@ -41,7 +41,7 @@ Made by Alexandru Bogdan. This is the setup I use with Claude Code every day, cl
 
 | Template | Version | What it does |
 |---|---|---|
-| [claude-md](templates/claude-md/) | 0.1.0 | A starter CLAUDE.md of voice rules and chat tone: plain words and no AI tells. |
+| [claude-md](templates/claude-md/) | 0.1.1 | A starter CLAUDE.md of voice rules and chat tone: plain words and no AI tells. |
 
 <!-- stack:catalog:end -->
 

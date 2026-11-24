@@ -4,7 +4,7 @@
 
 > A starter CLAUDE.md of voice rules and chat tone for Claude Code: plain words and no AI tells.
 
-**Version:** 0.1.0
+**Version:** 0.1.1
 
 A `CLAUDE.md` to copy into a project. It gives Claude one voice for everything it writes for you: short sentences, plain words, and a list of phrases it must not use. A second part sets how Claude talks to you in chat. Made by Pro Vibe Coding, in use since July 2026.
 
@@ -19,8 +19,8 @@ A `CLAUDE.md` to copy into a project. It gives Claude one voice for everything i
 
 ## Install
 
-1. Copy `CLAUDE.md` from this folder to the root of your project.
-2. If the project has a `CLAUDE.md` already, do not copy over it. Paste the parts you want into your file.
+1. If the project has a `CLAUDE.md` already, do not copy over it. Paste the parts you want into your file.
+2. If the project has no `CLAUDE.md` yet, copy `CLAUDE.md` from this folder to the root of your project.
 3. Start a new Claude Code session. Claude loads the file when a session starts.
 
 To use the rules in every project on your machine, put them in the `CLAUDE.md` of your user `.claude` folder.
