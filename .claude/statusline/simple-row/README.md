@@ -2,7 +2,7 @@
 
 A status line for Claude Code in one row: the model, the effort level, the context window, your usage limits and the ultracode switch.
 
-**Version:** 0.3.0
+**Version:** 0.3.1
 
 ```
 Opus 5.5 · max | context █░░░░░░░ 17% | week ░░░░░░░░ 0% | 5d 14h | ultracode ON
@@ -27,11 +27,11 @@ The colors follow the palette of your terminal. Orange is the one exception: the
 
 Claude Code sends the limits for a subscription login only. With an API key the row shows the model and the context window.
 
-In a narrow terminal the bars get shorter, then they go away, then the times go away, then the ultracode part goes away.
+In a narrow terminal the bars get shorter, then they go away, then the times go away, then the ultracode part goes away. The fit counts one column for each character, so a model name with wide characters can make the row wider than the terminal.
 
 ## The Ultracode Part
 
-Claude Code does not tell a status line if ultracode is on. So the script reads the key `ultracode` from your settings files. The nearest file wins:
+Claude Code does not tell a status line if ultracode is on. So the script reads the key `ultracode` from your settings files. The nearest file wins, and a file larger than 1 MB is passed over:
 
 1. `.claude/settings.local.json` in the project
 2. `.claude/settings.json` in the project
@@ -64,7 +64,9 @@ On macOS and Linux the script runs only with PowerShell 7 (`pwsh`).
 }
 ```
 
-3. Start a new session. The row shows after the first reply.
+If the settings file is there already, keep what it holds. Paste only the `"statusLine": { ... }` part inside its outer braces, with a comma after the entry before it. A second pair of outer braces breaks the file, and Claude Code then skips all of it.
+
+3. Start a new session. The row shows at once. The context bar and the limits fill in after the first reply.
 
 The command works when Claude Code runs it through Git Bash and when it runs it through PowerShell. With PowerShell 7, write `pwsh` in place of `powershell`.
 
@@ -72,11 +74,13 @@ The flag `-ExecutionPolicy Bypass` is needed on most PCs. Windows at its default
 
 ## Check It
 
+Run the script with the full path from your settings block, and add `-SelfTest`:
+
 ```
-powershell -NoProfile -ExecutionPolicy Bypass -File statusline.ps1 -SelfTest
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:/Users/<you>/.claude/statusline/simple-row/statusline.ps1" -SelfTest
 ```
 
-It prints six sample rows, then the effort words in their colors, and ends with `selftest: ok`.
+With PowerShell 7, write `pwsh` in place of `powershell`. It prints six sample rows, then the effort words in their colors, and ends with `selftest: ok` and the number of checks.
 
 ## When the Row Stays Empty
 
@@ -91,7 +95,7 @@ Claude Code sends the session as JSON to the script on each update. The script r
 
 The script never fails a session. On any error it still prints a short row and ends with exit code 0.
 
-The script reads three settings files for the one key `ultracode`. It writes no file and sends nothing.
+The script reads three settings files for the one key `ultracode`. On each update it writes no file and sends nothing. The self-test writes four small settings files to a temporary folder and deletes them at the end.
 
 The file is plain ASCII. The bar cell and the dot are built from character codes, and the output goes out as UTF-8. So Windows PowerShell 5.1 shows them right in every code page.
 

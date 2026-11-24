@@ -12,16 +12,23 @@
 # output goes out as UTF-8, so Windows PowerShell 5.1 shows them right.
 # The row must never fail: any error still ends in a row of text and exit code 0.
 #
-#   powershell -NoProfile -ExecutionPolicy Bypass -File statusline.ps1 -SelfTest     run the checks and print sample rows
+#   powershell -NoProfile -ExecutionPolicy Bypass -File "<full path>/statusline.ps1" -SelfTest     run the checks and print sample rows
 
 param([switch]$SelfTest)
 
 $ErrorActionPreference = 'Stop'
+$SAVED = $null
 try {
+    $SAVED = @([Console]::OutputEncoding, [Console]::InputEncoding)
     $utf8 = New-Object System.Text.UTF8Encoding $false
     [Console]::OutputEncoding = $utf8
     [Console]::InputEncoding = $utf8
 } catch { }
+
+function Restore-Encoding {
+    # A console is shared with the shell that started this script, so its code pages go back.
+    try { if ($SAVED) { [Console]::OutputEncoding = $SAVED[0]; [Console]::InputEncoding = $SAVED[1] } } catch { }
+}
 
 $ESC = [string][char]27
 $CELL = [string][char]0x2588      # one bar cell, a full block
@@ -59,17 +66,18 @@ function Get-Field($obj, [string[]]$path) {
     foreach ($key in $path) {
         if ($null -eq $cur) { return $null }
         if ($cur -is [System.Collections.IDictionary]) {
-            if (-not $cur.Contains($key)) { return $null }
+            if (-not ([System.Collections.IDictionary]$cur).Contains($key)) { return $null }
             $cur = $cur[$key]
         } elseif ($cur -is [string] -or $cur -is [ValueType] -or $cur -is [array]) {
             return $null
         } else {
             $prop = $cur.PSObject.Properties[$key]
             if ($null -eq $prop) { return $null }
+            if ($prop.Name -cne $key) { return $null }      # a JSON key counts only in its own letter case
             $cur = $prop.Value
         }
     }
-    return $cur
+    return ,$cur      # the comma keeps a list of one item a list
 }
 
 function ConvertTo-Number($value, [switch]$AllowText) {
@@ -108,7 +116,22 @@ function Read-Setting([string]$path, [string]$key) {
         if (-not $path -or -not [System.IO.File]::Exists($path)) { return $null }
         if ((New-Object System.IO.FileInfo $path).Length -gt 1000000) { return $null }
         $text = [System.IO.File]::ReadAllText($path).TrimStart([char]0xFEFF)
-        return (Get-Field ($text | ConvertFrom-Json) @($key))
+        try {
+            $parsed = $text | ConvertFrom-Json
+        } catch {
+            # ConvertFrom-Json stops at two keys that differ only in letter case, such as HTTP_PROXY
+            # and http_proxy. PowerShell 7 reads such a file with -AsHashtable. Windows PowerShell 5.1
+            # reads it with the JSON reader of .NET.
+            try {
+                $parsed = $text | ConvertFrom-Json -AsHashtable
+            } catch {
+                Add-Type -AssemblyName System.Web.Extensions
+                $reader = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+                $reader.MaxJsonLength = 2000000
+                $parsed = $reader.DeserializeObject($text)
+            }
+        }
+        return ,(Get-Field $parsed @($key))
     } catch { return $null }
 }
 
@@ -119,10 +142,12 @@ function Get-Ultra($data, [string]$configDir, [string]$userHome) {
     # a session (/effort ultracode) does not show here.
     try {
         $paths = New-Object System.Collections.ArrayList
-        $project = Get-Text (Get-Field $data @('workspace', 'project_dir')) 400
-        if ($project) {
-            [void]$paths.Add([System.IO.Path]::Combine($project, '.claude', 'settings.local.json'))
-            [void]$paths.Add([System.IO.Path]::Combine($project, '.claude', 'settings.json'))
+        $project = Get-Field $data @('workspace', 'project_dir')
+        if ($project -is [string] -and $project.Trim()) {
+            try {
+                [void]$paths.Add([System.IO.Path]::Combine($project, '.claude', 'settings.local.json'))
+                [void]$paths.Add([System.IO.Path]::Combine($project, '.claude', 'settings.json'))
+            } catch { $paths.Clear() }      # a path that Windows cannot have: go on to the user file
         }
         $folder = ([string]$configDir).Trim().Trim('"')
         if (-not $folder -and $userHome) { $folder = [System.IO.Path]::Combine($userHome, '.claude') }
@@ -141,6 +166,7 @@ function Get-Ultra($data, [string]$configDir, [string]$userHome) {
 function Get-Shown([double]$pct) {
     # The whole percent on screen. 100 only when the limit is reached.
     if ($pct -ge 100) { return 100 }
+    if ($pct -le 0) { return 0 }
     $whole = [int][math]::Floor($pct + 0.5)
     if ($whole -lt 0) { return 0 }
     if ($whole -gt 99) { return 99 }
@@ -160,6 +186,7 @@ function Get-Left($resets, [double]$now) {
     if ($null -eq $ts) { return '' }
     if ($ts -gt 100000000000) { $ts = $ts / 1000 }      # milliseconds
     if ($ts -le $now) { return '' }
+    if (($ts - $now) -gt 3153600000) { return '' }      # past a hundred years: no real reset
     $mins = [long][math]::Floor(($ts - $now) / 60)
     $hours = [long][math]::Floor($mins / 60)
     $days = [long][math]::Floor($mins / 1440)
@@ -198,7 +225,7 @@ function Add-Meter($segs, [string]$label, $pct, [int]$barWidth) {
 
 function Add-Effort($segs, [string]$effort) {
     # The effort word in the color of its level. The letters of max get one color each.
-    if ($effort -ceq 'max') {
+    if ([string]::CompareOrdinal($effort, 'max') -eq 0) {
         Add-Seg $segs 'red' 'm'
         Add-Seg $segs 'yellow' 'a'
         Add-Seg $segs 'blue' 'x'
@@ -206,7 +233,7 @@ function Add-Effort($segs, [string]$effort) {
     }
     $tone = 'none'
     foreach ($pair in $EFFORT_TONES) {
-        if ($effort -ceq $pair[0]) { $tone = $pair[1] }
+        if ([string]::CompareOrdinal($effort, $pair[0]) -eq 0) { $tone = $pair[1] }
     }
     Add-Seg $segs $tone $effort
 }
@@ -292,8 +319,8 @@ function Get-Fitted($data, [double]$now, [int]$limit, $ultra) {
         Add-Seg $cut $seg[0] $text
         $room -= $text.Length
     }
-    while ($cut.Count -gt 1 -and ($cut[$cut.Count - 1][0] -eq 'grey' -or -not $cut[$cut.Count - 1][1].Trim())) {
-        $cut.RemoveAt($cut.Count - 1)        # no separator and no label without its number at the end
+    while ($cut.Count -gt 1 -and (($cut[$cut.Count - 1][0] -eq 'grey' -and $cut[$cut.Count - 1][1] -cne '--') -or -not $cut[$cut.Count - 1][1].Trim() -or $cut[$cut.Count - 1][1] -cin @('m', 'a'))) {
+        $cut.RemoveAt($cut.Count - 1)        # no separator, no label without its number and no part of max at the end
     }
     if ($cut.Count -gt 0) {
         $last = $cut[$cut.Count - 1]
@@ -355,7 +382,7 @@ function ConvertFrom-Stdin([string]$raw) {
     if (-not $raw) { return $null }
     $raw = $raw.TrimStart([char]0xFEFF)
     if (-not $raw.Trim()) { return $null }
-    try { return ($raw | ConvertFrom-Json) } catch { return $null }
+    try { return ,($raw | ConvertFrom-Json) } catch { return $null }
 }
 
 
@@ -397,8 +424,9 @@ function Invoke-SelfTest {
 
     # 2. both limits, another effort word
     Test-Same 'both limits' (Get-PlainRow $both 200) ('Opus 5.5 ' + $DOT + ' high | context #####--- 63% | 5h ####---- 45% | 2h 58m | week #######- 91% | 5d 14h')
-    Test-Same 'the bar before a time is grey' $painted.Contains($COLOR['grey'] + ' | ' + $RESET + $COLOR['green'] + '5d 14h' + $RESET) $true
     $painted = Get-Painted (Get-Fitted $both $now 200)
+    Test-Same 'the bar before a time is grey' $painted.Contains($COLOR['grey'] + ' | ' + $RESET + $COLOR['green'] + '2h 58m' + $RESET) $true
+    Test-Same 'the bar before the other time is grey' $painted.Contains($COLOR['grey'] + ' | ' + $RESET + $COLOR['green'] + '5d 14h' + $RESET) $true
     Test-Same 'high is orange' $painted.Contains($COLOR['orange'] + 'high' + $RESET) $true
     Test-Same '63 is yellow' $painted.Contains($COLOR['yellow'] + '63%' + $RESET) $true
     Test-Same '91 is red' $painted.Contains($COLOR['red'] + '91%' + $RESET) $true
@@ -413,6 +441,12 @@ function Invoke-SelfTest {
     Test-Same 'text that is no JSON' ($null -eq (ConvertFrom-Stdin 'not json {')) $true
     Test-Same 'empty text' ($null -eq (ConvertFrom-Stdin '   ')) $true
     Test-Same 'a byte-order mark' (Get-Field (ConvertFrom-Stdin (([string][char]0xFEFF) + '{"a":{"b":7}}')) @('a', 'b')) 7
+    Test-Same 'a list of one number is no percent' (Get-PlainRow (Get-Sample '{"model":{"display_name":"Opus 5.5"},"context_window":{"used_percentage":[17]}}') 200) 'Opus 5.5 | context --'
+    Test-Same 'a list of one word is no effort level' (Get-PlainRow (Get-Sample '{"model":{"display_name":"Opus 5.5"},"effort":{"level":["high"]}}') 200) 'Opus 5.5 | context --'
+    if ($PSVersionTable.PSVersion.Major -lt 6) {
+        # Windows PowerShell 5.1 keeps a list of one object as a list. PowerShell 7 hands out the object.
+        Test-Same 'a list of one object as input' (Get-PlainRow (ConvertFrom-Stdin '[{"model":{"display_name":"Opus 5.5"}}]') 200) 'Claude | context --'
+    }
 
     # 4b. the color of each effort level
     Test-Same 'orange is a color of the 256-color table' $COLOR['orange'] ($ESC + '[38;5;208m')
@@ -424,6 +458,11 @@ function Invoke-SelfTest {
     foreach ($word in @('turbo', 'High', 'MAX', 'xhig')) {
         $leveled = Get-Sample ('{"model":{"display_name":"Opus 5.5"},"effort":{"level":"' + $word + '"},"context_window":{"used_percentage":1}}')
         Test-Same ('a word that is no level stays plain: ' + $word) (Get-Painted (Get-Fitted $leveled $now 200)).Contains($RESET + $word + $COLOR['grey']) $true
+    }
+    foreach ($pair in @(@('hi', 0x00AD, 'gh'), @('lo', 0xFEFF, 'w'), @('ma', 0x200D, 'x'))) {
+        $word = $pair[0] + [string][char]($pair[1]) + $pair[2]
+        $leveled = Get-Sample ('{"model":{"display_name":"Opus 5.5"},"effort":{"level":"' + $word + '"},"context_window":{"used_percentage":1}}')
+        Test-Same ('a hidden character makes no level: {0} U+{1:X4} {2}' -f $pair[0], $pair[1], $pair[2]) (Get-Painted (Get-Fitted $leveled $now 200)).Contains($RESET + $word + $COLOR['grey']) $true
     }
 
     # 5. fast mode
@@ -454,6 +493,10 @@ function Invoke-SelfTest {
     Test-Same 'then the row is cut after a number' (Get-PlainRow $both 48) ('Opus 5.5 ' + $DOT + ' high | context 63% | 5h 45%')
     Test-Same 'a cut row ends on a number' (Get-PlainRow $both 30) ('Opus 5.5 ' + $DOT + ' high | context 63%')
     Test-Same 'a very narrow row keeps the start of the model' (Get-PlainRow $both 5) 'Opus'
+    Test-Same 'a cut row shows no part of max' (Get-PlainRow $full 12) 'Opus 5.5'
+    Test-Same 'a cut row shows no part of max, one column more' (Get-PlainRow $full 13) 'Opus 5.5'
+    $fiveOnly = Get-Sample ('{"rate_limits":{"five_hour":{"used_percentage":20,"resets_at":' + [string][long]$five + '}}}')
+    Test-Same 'a cut row keeps the two dashes of a meter with no number' (Get-PlainRow $fiveOnly 19) 'Claude | context --'
     Test-Same 'no COLUMNS value' (Get-Limit '') 200
     Test-Same 'a COLUMNS value that is no number' (Get-Limit 'wide') 200
     Test-Same 'COLUMNS less the margin' (Get-Limit '120') 116
@@ -464,6 +507,9 @@ function Invoke-SelfTest {
     Test-Same 'full' (Get-Shown 100.0) 100
     Test-Same 'over' (Get-Shown 150.0) 100
     Test-Same 'below zero' (Get-Shown -5.0) 0
+    $got = 'an error'
+    try { $got = Get-Shown -3000000000.0 } catch { }
+    Test-Same 'far below zero' $got 0
     Test-Same '59 is cyan' (Get-Tone 59) 'cyan'
     Test-Same '60 is yellow' (Get-Tone 60) 'yellow'
     Test-Same '84 is yellow' (Get-Tone 84) 'yellow'
@@ -487,6 +533,9 @@ function Invoke-SelfTest {
     Test-Same 'a number in text' (Get-Left ([string][long]($now + 7200)) $now) '2h 0m'
     Test-Same 'text that is no number' (Get-Left 'soon' $now) ''
     Test-Same 'no reset time' (Get-Left $null $now) ''
+    $got = 'an error'
+    try { $got = Get-Left 1e30 $now } catch { }
+    Test-Same 'a reset too far away to be real' $got ''
     Test-Same 'a bool is no number' ($null -eq (ConvertTo-Number $true)) $true
     Test-Same 'text is no percent' ($null -eq (ConvertTo-Number '12')) $true
     Test-Same 'control characters go' (Get-Text ('Opus' + [string][char]27 + '[31m 5' + "`n") 40) 'Opus[31m 5'
@@ -537,20 +586,32 @@ function Invoke-SelfTest {
         Test-Same 'the local file wins over the project file' (Get-Ultra $inProj $userDir $homeDir) $true
         [System.IO.File]::WriteAllText($local, '{"ultracode": "yes"}')
         Test-Same 'a value that is no true or false is passed over' (Get-Ultra $inProj $userDir $homeDir) $false
+        [System.IO.File]::WriteAllText($local, '{"ULTRACODE": true}')
+        Test-Same 'a key in other letter case is passed over' (Get-Ultra $inProj $userDir $homeDir) $false
         [System.IO.File]::WriteAllText($local, 'not json {')
         Test-Same 'a file that is no JSON is passed over' (Get-Ultra $inProj $userDir $homeDir) $false
+        [System.IO.File]::WriteAllText($local, '{"ultracode": [true]}')
+        Test-Same 'a list of one value is passed over' (Get-Ultra $inProj $userDir $homeDir) $false
         [System.IO.File]::WriteAllText($local, '[true]')
         Test-Same 'a file that is a list is passed over' (Get-Ultra $inProj $userDir $homeDir) $false
         [System.IO.File]::WriteAllText($shared, '{"hooks": {}}')
         Test-Same 'a file with no such key is passed over' (Get-Ultra $inProj $userDir $homeDir) $true
         [System.IO.File]::WriteAllText($shared, (([string][char]0xFEFF) + '{"ultracode": false}'), (New-Object System.Text.UTF8Encoding $false))
         Test-Same 'a byte-order mark in a settings file' (Get-Ultra $inProj $userDir $homeDir) $false
+        [System.IO.File]::WriteAllText($shared, '{"ultracode": false, "env": {"HTTP_PROXY": "a", "http_proxy": "a"}}')
+        Test-Same 'a file with two keys that differ only in letter case' (Get-Ultra $inProj $userDir $homeDir) $false
         Test-Same 'no project folder: the user file' (Get-Ultra $null $userDir $homeDir) $true
         Test-Same 'quotes around the config folder' (Get-Ultra $null ('"' + $userDir + '"') $homeDir) $true
         [System.IO.File]::WriteAllText([System.IO.Path]::Combine($homeDir, '.claude', 'settings.json'), '{"ultracode": false}')
         Test-Same 'no config folder: the .claude folder of the user' (Get-Ultra $null '' $homeDir) $false
         Test-Same 'no folder at all: not known' ($null -eq (Get-Ultra $null '' '')) $true
         Test-Same 'a project folder that is no text: the user file' (Get-Ultra (Get-Sample '{"workspace":{"project_dir":5}}') $userDir $homeDir) $true
+        Test-Same 'a project folder that Windows cannot have: the user file' (Get-Ultra (Get-Sample '{"workspace":{"project_dir":"C:/bad|name"}}') $userDir $homeDir) $true
+        # A project path of more than 400 characters is read in full: 400 slashes, then the folder home.
+        [System.IO.File]::WriteAllText($local, '{"ultracode": true}')
+        [System.IO.File]::WriteAllText($user, '{"ultracode": false}')
+        $far = Get-Sample ('{"workspace":{"project_dir":' + (ConvertTo-Json ($proj + ('/' * 400) + '../home')) + '}}')
+        Test-Same 'a long project path is read in full' (Get-Ultra $far $userDir $homeDir) $false
     } finally {
         try { [System.IO.Directory]::Delete($tmp, $true) } catch { }
     }
@@ -561,6 +622,24 @@ function Invoke-SelfTest {
         foreach ($byte in [System.IO.File]::ReadAllBytes($PSCommandPath)) { if ($byte -gt 126) { $bad += 1 } }
     }
     Test-Same 'this file is plain ASCII' $bad 0
+
+    # 11. the console gets its code pages back before each exit
+    $kept = @([Console]::OutputEncoding, [Console]::InputEncoding)
+    Restore-Encoding
+    $back = @([Console]::OutputEncoding.CodePage, [Console]::InputEncoding.CodePage)
+    try { [Console]::OutputEncoding = $kept[0]; [Console]::InputEncoding = $kept[1] } catch { }
+    $want = @(0, 0)
+    if ($SAVED) { $want = @($SAVED[0].CodePage, $SAVED[1].CodePage) }
+    Test-Same 'the code page of the console goes back' $back[0] $want[0]
+    Test-Same 'the input code page of the console goes back' $back[1] $want[1]
+    $exits = 0
+    $restored = 0
+    if ($PSCommandPath) {
+        $source = [System.IO.File]::ReadAllText($PSCommandPath)
+        $exits = [regex]::Matches($source, '(?m)^ *exit ').Count
+        $restored = [regex]::Matches($source, '(?m)^ *Restore-Encoding\r?\n *exit ').Count
+    }
+    Test-Same 'each exit gives the code pages back' $restored $exits
 
     [Console]::Out.WriteLine('')
     foreach ($sample in @(@('the row', $full, $null), @('both limits', $both, $null), @('ultracode on', $both, $true),
@@ -589,6 +668,7 @@ function Invoke-SelfTest {
 if ($SelfTest) {
     $code = 1
     try { $code = Invoke-SelfTest } catch { [Console]::Out.WriteLine('selftest: the test itself failed: ' + $_) }
+    Restore-Encoding
     exit $code
 }
 
@@ -600,4 +680,5 @@ try {
     $row = Get-Painted (Get-Fitted $data (Get-Now) (Get-Limit ([string]$env:COLUMNS)) $ultra)
 } catch { }
 try { [Console]::Out.Write($row) } catch { $row }      # a host that allows no method call still gets the row
+Restore-Encoding
 exit 0
