@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/pvc-roadmap-writer-banner.jpg" alt="pvc-roadmap-writer"></p>
 
-![version](https://img.shields.io/badge/version-v0.2.1-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
+![version](https://img.shields.io/badge/version-v0.2.2-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
 
 > Writes and updates linear roadmap files: tick-box steps, one bold TLDR line per step, one testable finish line.
 
@@ -46,6 +46,7 @@ your-project/
         └── pvc-roadmap-writer/
             ├── SKILL.md
             ├── README.md
+            ├── assets/          (README artwork)
             └── REQUIREMENTS.md
 ```
 
@@ -119,22 +120,31 @@ One command that copies the photo folder to an external drive and proves that th
 ## Steps
 
 1. [x] **Decide Where the Backup Goes** (decided 2026-07-15)
-   An external drive, not a cloud folder. One dated folder per run, and old runs stay.
+   An external drive, not a cloud folder.
+   One dated folder per run.
+   Old runs stay.
 
 2. [ ] **Write backup.py**
-   Input: a source folder and a target drive. Actions: copy every file, keep the folder layout, refuse to run when the drive is missing.
+   Input: a source folder and a target drive.
+   Copy every file into the same folder layout.
+   Refuse to run when the drive is missing.
 
 3. [ ] **Wire in the Verify Pass**
-   Hash every source file and its copy. Any mismatch stops the run, exit nonzero.
+   Hash every source file and its copy.
+   Any mismatch stops the run, exit nonzero.
 
 4. [ ] **Test on a Throwaway Folder**
-   Copy 50 mixed files to a scratch folder, back it up, diff the result. Every file there, zero mismatches.
+   Copy 50 mixed files to a scratch folder.
+   Back it up and diff the result.
+   Every file there, zero mismatches.
 
    - [ ] **4b: Rerun with a File Changed During the Copy**
      The race case. The run must flag the changed file, not report OK.
 
 5. [ ] **Run the First Real Backup**
-   The full photo folder goes first. Run the command, spot-check ten files, note the runtime.
+   The full photo folder goes first.
+   Run the command and spot-check ten files.
+   Note the runtime.
 
 ## Done when
 
@@ -174,6 +184,7 @@ Every roadmap the skill writes is checked against these dimensions before it is 
 
 ## Changelog
 
+- **v0.2.2 (2026-11-24).** The worked examples put one idea on each detail line now, as the skill's own rules ask. The tree under Install lists the `assets/` folder.
 - **v0.2.1 (2026-11-23).** Moved into the pvc-stack repo under MIT. One `LICENSE` file at the root of the repo covers every skill, so the skill folder carries no license files of its own. The worked example is a photo backup script now, and this README is new.
 - **v0.2.0 (2026-07-18).** Sub-steps: tick-box items under a step (`4b`, `4c`) for work that runs deeper than the headline, each with its own detail lines and dates.
 - **v0.1.0 (2026-07-15).** First packaged version: linear steps, TLDR first, dated ticks and one finish line.

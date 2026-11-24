@@ -3,7 +3,7 @@ name: pvc-roadmap-writer
 description: Writes and updates linear roadmap files in the PVC style, numbered checkbox steps, one bold Title Case TLDR line per step with short detail under it, checkbox sub-steps when the work runs deeper than the headline, finished steps ticked with dates, and a testable Done when statement as the finish line. Use when asked to "make a roadmap", "roadmap this", "plan this out in steps", "turn this idea into a step-by-step plan", when an idea note or voice transcript needs a linear execution file, or when a step in an existing roadmap gets done or decided and the file needs ticking.
 metadata:
   author: pvc
-  version: "0.2.1"
+  version: "0.2.2"
 license: MIT
 ---
 
@@ -98,22 +98,31 @@ One command that copies the photo folder to an external drive and proves that th
 ## Steps
 
 1. [x] **Decide Where the Backup Goes** (decided 2026-07-15)
-   An external drive, not a cloud folder. One dated folder per run, and old runs stay.
+   An external drive, not a cloud folder.
+   One dated folder per run.
+   Old runs stay.
 
 2. [ ] **Write backup.py**
-   Input: a source folder and a target drive. Actions: copy every file, keep the folder layout, refuse to run when the drive is missing.
+   Input: a source folder and a target drive.
+   Copy every file into the same folder layout.
+   Refuse to run when the drive is missing.
 
 3. [ ] **Wire in the Verify Pass**
-   Hash every source file and its copy. Any mismatch stops the run, exit nonzero.
+   Hash every source file and its copy.
+   Any mismatch stops the run, exit nonzero.
 
 4. [ ] **Test on a Throwaway Folder**
-   Copy 50 mixed files to a scratch folder, back it up, diff the result. Every file there, zero mismatches.
+   Copy 50 mixed files to a scratch folder.
+   Back it up and diff the result.
+   Every file there, zero mismatches.
 
    - [ ] **4b: Rerun with a File Changed During the Copy**
      The race case. The run must flag the changed file, not report OK.
 
 5. [ ] **Run the First Real Backup**
-   The full photo folder goes first. Run the command, spot-check ten files, note the runtime.
+   The full photo folder goes first.
+   Run the command and spot-check ten files.
+   Note the runtime.
 
 ## Done when
 
@@ -131,7 +140,7 @@ docs/photo-backup-roadmap.md
 
 User: "tick step 2, wrote the script today"
 
-Edit in the file: `2. [ ] **Write backup.py**` becomes `2. [x] **Write backup.py** (done 2026-07-16)` and its detail lines now read "Written at tools/backup.py. Refuses to run when the drive is missing, keeps the folder layout."
+Edit in the file: `2. [ ] **Write backup.py**` becomes `2. [x] **Write backup.py** (done 2026-07-16)` and its three detail lines now read "Written at tools/backup.py.", "Keeps the folder layout." and "Refuses to run when the drive is missing."
 
 Chat output:
 
