@@ -2,7 +2,7 @@
 
 A Claude Code hook that puts the date, the weekday and the time in front of every prompt. Claude then knows what day it is, and how much time passed between two messages.
 
-**Version:** 0.2.0
+**Version:** 0.2.1
 
 What Claude gets with each prompt:
 
@@ -12,7 +12,7 @@ What Claude gets with each prompt:
 
 ## Why
 
-A session knows the date of its start and nothing after that. In a long session Claude reasons from a stale date. This hook gives it the real time with each message, for about 15 tokens per prompt.
+A session is told the date at its start and again when the date changes. It is not told the weekday or the time of day, so in a long session Claude cannot tell how much time passed. This hook gives it the real time with each message, for about 15 tokens per prompt.
 
 ## In This Repo
 
@@ -20,13 +20,13 @@ The hook is on in this repo. The file `.claude/settings.json` holds it, so the h
 
 ## Add It by Hand
 
-Do this when you take only this hook, or when your project has a settings file already. Pick the settings file:
+Do this when you take only this hook, or when your project has a `.claude` folder already. Pick the settings file:
 
 - `.claude/settings.local.json` in a project: for you alone, in that project. Start here
 - `.claude/settings.json` in a project: for everyone who works in the repo
 - `settings.json` in your user `.claude` folder: for every project on the PC
 
-Add one of the three blocks. When the file has a `hooks` key already, add the entry to its `UserPromptSubmit` list. The change applies to a running session too.
+Add one of the three blocks. In a new file, paste the whole block. In a file with content, merge it inside the outer braces, never below them. With no `hooks` key, add the `"hooks"` key and its value. With a `hooks` key but no `UserPromptSubmit` list, add the `"UserPromptSubmit"` key and its list inside `hooks`. With a `UserPromptSubmit` list, add the entry to that list. Put a comma between two keys, and between two entries of a list. The change applies to a running session too.
 
 You can also ask Claude to do it: "add the timestamp hook from this README to my local settings file".
 
@@ -116,7 +116,7 @@ Inside a settings file the command is a JSON string, so each `"` of it is writte
 
 ## Switch It Off
 
-Take the entry out of the settings file. For the hook of this repo, delete the `hooks` block in `.claude/settings.json`.
+Take the timestamp entry out of the `UserPromptSubmit` list of the settings file that holds it. When the `hooks` block holds nothing else, you can delete the whole block.
 
 ## License
 
