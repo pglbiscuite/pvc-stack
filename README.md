@@ -15,6 +15,12 @@ Made by Alexandru Bogdan. This is the setup I use with Claude Code every day, cl
 | [pvc-git-commit-message-local](.claude/skills/pvc-git-commit-message-local/) | 0.4.2 | Write a commit message in the PVC format and commit locally, with no push. |
 | [pvc-roadmap-writer](.claude/skills/pvc-roadmap-writer/) | 0.2.1 | Write and update linear roadmap files with tick-box steps and one finish line. |
 
+**Templates**
+
+| Template | Version | What it does |
+|---|---|---|
+| [claude-md](templates/claude-md/) | 0.1.0 | A starter CLAUDE.md of voice rules and chat tone: plain words and no AI tells. |
+
 <!-- stack:catalog:end -->
 
 ## What Is in the Folder
