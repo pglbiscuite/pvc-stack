@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo `# <#` >/dev/null; date \"+[Current time: %Y-%m-%d (%A) %H:%M]\"; exit #> > $null; [string]::Format([cultureinfo]::InvariantCulture, '[Current time: {0:yyyy-MM-dd} ({0:dddd}) {0:HH:mm}]', (Get-Date))"
+          }
+        ]
+      }
+    ]
+  }
+}
