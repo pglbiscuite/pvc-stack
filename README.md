@@ -20,6 +20,7 @@ Made by Alexandru Bogdan. This is the setup I use with Claude Code every day, cl
 | Output style | Version | What it does |
 |---|---|---|
 | [eli5](.claude/output-styles/eli5.md) | - | Short plain answers in Simplified Technical English: what was done, did it work, what to do next. |
+| [fast-replies](.claude/output-styles/fast-replies.md) | - | The answer in one line first, then numbered one-line ideas in plain words. |
 | [tldr-eli10](.claude/output-styles/tldr-eli10.md) | - | One TLDR line first, then one line per idea in plain words. |
 
 **Hooks**
