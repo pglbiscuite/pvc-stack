@@ -13,11 +13,11 @@ What a fresh machine needs before this skill runs. Tick each box once it is on t
 - [ ] **A git repository in the project you open** (the skill commits into an existing repo, it never creates one)
   Check `git status`, start one with `git init`
 - [ ] **A git identity** (git refuses the first commit without one)
-  Check `git config user.name`, set it with `git config --global user.name` and `git config --global user.email`
+  Check `git config user.name`. When it prints nothing, set both values: `git config --global user.name "Your Name"` and `git config --global user.email "your mail address"`, each with your own value in the quotes
 
 ## Optional
 
 - [ ] **A memory folder that is a git repo of its own** (then the memory notes get a commit too)
-  The folder is `<config dir>/projects/<slug>/memory`. The skill never runs `git init` there
+  The folder is the one named in the `autoMemoryDirectory` setting when you set one, otherwise `<config dir>/projects/<slug>/memory`. The skill never runs `git init` there
 
 Nothing else to install. Claude Code supplies the tools the skill uses.

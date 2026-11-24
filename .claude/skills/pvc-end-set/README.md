@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/pvc-end-set-banner.jpg" alt="pvc-end-set"></p>
 
-![version](https://img.shields.io/badge/version-v0.1.4-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
+![version](https://img.shields.io/badge/version-v0.1.5-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
 
 > Closes a work set in one command: lab notes, memory notes, a local commit and the line for /compact.
 
@@ -25,7 +25,7 @@ A Claude Code skill for the end of a block of work. Made by Pro Vibe Coding. One
 - Lab notes follow the rules of `pvc-claude-md`: dated entries, the latest 10 in `CLAUDE.md`, older ones in `LABS.md`.
 - Memory is the notes folder that Claude Code keeps per project. No server and no MCP tool has to run.
 - The commit follows `pvc-git-commit-message-local`: the PVC format, local only, never a push.
-- The `/compact` line names the version and the topic of the set. It stays under 80 characters, so a terminal does not wrap it.
+- The `/compact` line names the topic of the set, and the version when a commit has one. It stays under 80 characters, so a terminal does not wrap it.
 - Safe to run twice: no duplicate notes, and a clean tree gets a refusal line in place of an empty commit.
 
 ## Install
@@ -47,6 +47,7 @@ your-project/
         ├── pvc-end-set/
         │   ├── SKILL.md
         │   ├── README.md
+        │   ├── assets/          (README artwork)
         │   └── REQUIREMENTS.md
         ├── pvc-claude-md/
         └── pvc-git-commit-message-local/
@@ -54,11 +55,11 @@ your-project/
 
 ### Personal (all your projects)
 
-Copy the folders to your user-level skills directory:
+Copy the three folders into your user-level skills directory, side by side:
 
 ```text
-Windows:        %USERPROFILE%\.claude\skills\pvc-end-set\
-macOS / Linux:  ~/.claude/skills/pvc-end-set/
+Windows:        %USERPROFILE%\.claude\skills\
+macOS / Linux:  ~/.claude/skills/
 ```
 
 ### Polyrepo / monorepo
@@ -94,7 +95,7 @@ Agent response. One block per step, then the line to paste:
 
 ```text
 CLAUDE.md: 2 lab notes added, 2 rotated to LABS.md, 1 pointer line added.
-Memory: 3 notes updated, 1 added; committed 889d5fa v0.0.2 - Added the Backup Drive Note
+Memory: 3 notes updated, 1 added (~/.claude/projects/-srv-my-app/memory); committed 889d5fa v0.0.2 - Added the Backup Drive Note
 Commit: 45df16e v0.0.2 - Closed the Photo Backup Set
 /compact Set v0.0.2 Closed (Photo Backup Set), Keep Open Items, Paths, Hashes
 Then say what you want next.
@@ -106,7 +107,7 @@ When nothing changed since the last set, each block says so:
 
 ```text
 CLAUDE.md: nothing new this set.
-Memory: notes already current, nothing to commit.
+Memory: notes already current (~/.claude/projects/-srv-my-app/memory), nothing to commit.
 Commit: nothing to commit, working tree is clean.
 /compact Set v0.3.1 Closed (Worker Retry Loop), Keep Open Items, Paths, Hashes
 Then say what you want next.
@@ -119,9 +120,9 @@ Then say what you want next.
 | 1. Learnings | Each gotcha, dead end or non-obvious approach of the session becomes a dated lab note in `CLAUDE.md` | `pvc-claude-md` |
 | 2. Memory | Each durable fact of the session gets a note in the memory folder of the project, or an existing note gets updated | the note format of Claude Code |
 | 3. Commit | One local commit of the project in the PVC format | `pvc-git-commit-message-local` |
-| 4. Hand-over | A ready `/compact` line with the version and the topic of the set | this skill |
+| 4. Hand-over | A ready `/compact` line with the topic of the set, and the version when a commit has one | this skill |
 
-The memory folder is `<config dir>/projects/<slug>/memory`. The config dir is the value of `CLAUDE_CONFIG_DIR` when that variable is set, otherwise `~/.claude`. The slug comes from the full path of the repo's main working tree: every character other than the ASCII letters and the digits `0` to `9` becomes a dash, so `/srv/my_app` becomes `-srv-my-app`. A slug of more than 200 characters is cut there and ends in a dash and a short hash. Every git worktree of a repo shares the memory folder of the main checkout. When the folder is missing, the skill looks in `<config dir>/projects` for the folder of the project before it makes one. The skill prints the path it used.
+The memory folder is the folder named in the `autoMemoryDirectory` setting when you set one, otherwise `<config dir>/projects/<slug>/memory`. The config dir is the value of `CLAUDE_CONFIG_DIR` when that variable is set, otherwise `~/.claude`. The slug comes from the full path of the repo's main working tree: every character other than the ASCII letters and the digits `0` to `9` becomes a dash, so `/srv/my_app` becomes `-srv-my-app`. A slug of more than 200 characters is cut there and ends in a dash and a short hash. Every git worktree of a repo shares the memory folder of the main checkout. When the folder is missing, the skill looks in `<config dir>/projects` for the folder of the project before it makes one. The skill prints the path it used.
 
 When the memory folder is a git repo of its own, the notes get a commit too. When it is not, the notes are written and the skill says that it made no commit there.
 
@@ -131,11 +132,11 @@ Every run is checked against these dimensions.
 
 | Dimension | Pass criteria |
 | --- | --- |
-| order | The four blocks come in the fixed order, each with its label. A skipped step keeps its label and gives one line of reason. |
+| order | The three labelled blocks come in the fixed order, then the `/compact` line. A skipped step keeps its label and gives one line of reason. |
 | lab_notes | Dated entries of 1 to 2 sentences. No duplicate title. At most 10 entries stay in `CLAUDE.md`. |
 | memory | Each durable fact of the session is in a note. No twin notes. The folder path is printed. |
 | commit | One local commit in the PVC format, or the refusal line on a clean tree. No push and no new remote. |
-| hand_over | The `/compact` line is under 80 characters and names the version and the topic of the set. |
+| hand_over | The `/compact` line is under 80 characters and names the topic of the set. It names the version too when a commit has one. |
 | privacy | No secret, no home path and no client name in a lab note. |
 
 ## Known Limitations
@@ -149,6 +150,7 @@ Every run is checked against these dimensions.
 
 ## Changelog
 
+- **v0.1.5 (2026-11-24).** The `/compact` line leaves out the version when no commit has one. Every Memory line of the output shows the path of the memory folder. README.md and REQUIREMENTS.md name the `autoMemoryDirectory` setting, as SKILL.md does. REQUIREMENTS.md gives the git identity commands with a value. The personal install puts the three folders side by side in the user skills folder. Smaller fixes in the pages: the count of labelled blocks, the place of the two helper skills and `assets/` in the folder tree.
 - **v0.1.4 (2026-11-23).** Moved into the pvc-stack repo under MIT. One `LICENSE` file at the root of the repo covers every skill, so the skill folder carries no license files of its own. This README is new.
 - **v0.1.3 (2026-09-26).** The `/compact` line carries the topic of the set in brackets, two to four words from the commit headline.
 - **v0.1.2 (2026-09-25).** The `/compact` line lost its date and went under 80 characters. A terminal wraps a longer line, and the paste then sends only its first half.

@@ -1,9 +1,9 @@
 ---
 name: pvc-end-set
-description: Closes a work set in one go. Captures the session's learnings into CLAUDE.md with the pvc-claude-md rules, brings the project's file-based memory notes up to date (the folder Claude Code keeps per project under the active config dir), commits the project locally in the PVC format, commits the memory folder too when it is its own git repo, then hands the user the one thing Claude cannot run, /compact. Nothing extra has to run, so it works on any machine. Use when the user says "end set", "close the set", "wrap up the session", "end of session", "save and commit", or asks for CLAUDE.md plus memory plus commit plus compact together.
+description: Closes a work set in one go. Captures the session's learnings into CLAUDE.md with the pvc-claude-md rules, brings the project's file-based memory notes up to date (by default the folder Claude Code keeps per project under the active config dir), commits the project locally in the PVC format, commits the memory folder too when it is its own git repo, then hands the user the one thing Claude cannot run, /compact. Nothing extra has to run, so it works on any machine. Use when the user says "end set", "close the set", "wrap up the session", "end of session", "save and commit", or asks for CLAUDE.md plus memory plus commit plus compact together.
 metadata:
   author: pvc
-  version: "0.1.4"
+  version: "0.1.5"
 license: MIT
 ---
 
@@ -58,17 +58,17 @@ Two profiles on one machine can share one memory folder (their `projects` folder
 Run the four parts in this order. Each part is one clear block of the output, and a skipped part says why in one line.
 
 1. **Learnings into CLAUDE.md.** Follow the Lab Notes and session-learnings rules of `pvc-claude-md`: one `### YYYY-MM-DD: short title` entry per gotcha, dead end, or non-obvious approach from this session, 1-2 sentences each, newest at the bottom. Rotate past 10 into `LABS.md` and fix the header count. Add a project rule only when the session settled one. Strip secrets, absolute home paths and client names. Nothing worth keeping: write "CLAUDE.md: nothing new this set" and move on.
-2. **Memory notes.** Check the memory folder against the session: every durable fact (a decision, a correction from the user, a project state change, a pointer) that is not yet in a note gets one, following the note format the memory system prescribes (frontmatter with name, description, type; a Why and a How to apply line for feedback and project notes; a one-line pointer in MEMORY.md). Update an existing note rather than adding a twin, and delete notes proven wrong. Then, when the memory folder is its own git repo (`git -C <folder> rev-parse --show-toplevel` answers with that folder, not a parent), run the commit skill there. Not a repo: write "Memory: N notes updated, folder is not a git repo, no commit" and go on. Nothing new: write "Memory: notes already current" and still check for uncommitted edits made earlier in the session.
-3. **Commit the project.** Follow `pvc-git-commit-message-local` end to end in the project: read the tree, pick the bump, write the PVC message (no quotes, no backticks, blank line after the headline), stage the named paths for this set including the CLAUDE.md and LABS.md changes, commit, report the short hash. Clean tree: print its refusal line and go on.
-4. **Hand over /compact.** End with two lines. The first is a ready-to-copy compact line built from the set: `/compact Set <vX.Y.Z> Closed (<Topic>), Keep Open Items, Paths, Hashes`, in Title Case like a commit headline. The version is the commit just made, or the last one on a clean tree. The topic is two to four words that say what the set was about, taken from the headline of that same commit (`Photo Backup Set`, `Worker Retry Loop`), so the line reads as a record of the set in the terminal history instead of the same line after every set. The keep clause tells the summarizer what must survive: the open items, the exact paths and the commit hashes; the summarizer reads the whole chat for the rest. No date in the line: the commit carries its own date. Keep the whole line under 80 characters, because a terminal wraps a longer line, the copy keeps that wrap as a line break, and the paste then sends only the first half to /compact; the fixed words take about 62 characters, so the topic gets about 17, and when the line runs long, shorten the topic, never the keep clause. The second line is `Then say what you want next.`
+2. **Memory notes.** Check the memory folder against the session: every durable fact (a decision, a correction from the user, a project state change, a pointer) that is not yet in a note gets one, following the note format the memory system prescribes (frontmatter with name, description, type; a Why and a How to apply line for feedback and project notes; a one-line pointer in MEMORY.md). Update an existing note rather than adding a twin, and delete notes proven wrong. Then, when the memory folder is its own git repo (`git -C <folder> rev-parse --show-toplevel` answers with that folder, not a parent), run the commit skill there. Not a repo: write "Memory: N notes updated (<folder>), folder is not a git repo, no commit" and go on. Nothing new: write "Memory: notes already current (<folder>)" and still check for uncommitted edits made earlier in the session.
+3. **Commit the project.** Follow `pvc-git-commit-message-local` end to end in the project: read the tree, pick the bump, write the PVC message (no quotes, no backticks, blank line after the headline), stage the named paths for this set including the CLAUDE.md and LABS.md changes (none on a STAGED only answer, as that skill says; the Commit block then names the lab-note files left out), commit, report the short hash. Clean tree: print its refusal line and go on.
+4. **Hand over /compact.** End with two lines. The first is a ready-to-copy compact line built from the set: `/compact Set <vX.Y.Z> Closed (<Topic>), Keep Open Items, Paths, Hashes`, in Title Case like a commit headline. The version comes from the commit of step 3, or else from the last commit whose headline starts with vX.Y.Z (a clean tree, a failed commit). When no commit has one (a new repo, a first commit that failed, a history with no PVC headline), leave the version out, `/compact Set Closed (<Topic>), Keep Open Items, Paths, Hashes`, and take the topic from the work of the set. The topic is two to four words that say what the set was about, taken from the headline of that same commit (`Photo Backup Set`, `Worker Retry Loop`), or from the work of the set when the commit of step 3 failed, so the line reads as a record of the set in the terminal history instead of the same line after every set. The keep clause tells the summarizer what must survive: the open items, the exact paths and the commit hashes; the summarizer reads the whole chat for the rest. No date in the line: the commit carries its own date. Keep the whole line under 80 characters, because a terminal wraps a longer line, the copy keeps that wrap as a line break, and the paste then sends only the first half to /compact; the fixed words take about 62 characters, so the topic gets about 17, and when the line runs long, shorten the topic, never the keep clause. The second line is `Then say what you want next.`
 
 ## What To Print
 
-One shape, four labelled blocks, then the hand-over line. Keep each block to two or three lines. A skipped part keeps its label and one line of reason.
+One shape: three labelled blocks, then the two hand-over lines. Keep each block to two or three lines. A skipped part keeps its label and one line of reason.
 
 ```
 CLAUDE.md: 2 lab notes added, 2 rotated to LABS.md, 1 pointer line added.
-Memory: 3 notes updated, 1 added; committed 889d5fa v0.0.2 - Added the Backup Drive Note
+Memory: 3 notes updated, 1 added (~/.claude/projects/-srv-my-app/memory); committed 889d5fa v0.0.2 - Added the Backup Drive Note
 Commit: 45df16e v0.0.2 - Closed the Photo Backup Set
 /compact Set v0.0.2 Closed (Photo Backup Set), Keep Open Items, Paths, Hashes
 Then say what you want next.
@@ -88,7 +88,7 @@ Refusal shape, when nothing at all changed since the last set:
 
 ```
 CLAUDE.md: nothing new this set.
-Memory: notes already current, nothing to commit.
+Memory: notes already current (~/.claude/projects/-srv-my-app/memory), nothing to commit.
 Commit: nothing to commit, working tree is clean.
 /compact Set v0.3.1 Closed (Worker Retry Loop), Keep Open Items, Paths, Hashes
 Then say what you want next.
@@ -98,9 +98,9 @@ Then say what you want next.
 
 - **Memory folder missing:** when the search of Where Things Live finds no folder of this project under `<config dir>/projects`, create it, write the notes and a MEMORY.md index, say so in the Memory block, skip the memory commit, continue with the project commit.
 - **CLAUDE_CONFIG_DIR unset while several config dirs exist:** use `~/.claude`, since that is what a plain `claude` call uses, and print the path so a wrong profile is visible at once.
-- **Commit fails (hook, lock, nothing staged) in either repo:** show the git error, leave the tree as it is, still print the hand-over line so the user can compact and retry.
+- **Commit fails (hook, lock, nothing staged) in either repo:** show the git error, leave the tree as it is, still print the two hand-over lines so the user can compact and retry.
 - **Re-run on the same set:** CLAUDE.md gets no duplicate notes (check the titles first), memory notes get no twins (check the names first), both commits refuse on a clean tree. Safe to call twice.
 
 ## Installation
 
-Copy this folder into the project as `.claude/skills/pvc-end-set/`. The command name comes from the folder name. It needs `pvc-claude-md` and `pvc-git-commit-message-local` in the same project. Restart Claude Code so the skill loads. Verify by asking "What skills are available?" and confirming pvc-end-set appears.
+Copy this folder into the project as `.claude/skills/pvc-end-set/`. The command name comes from the folder name. It needs `pvc-claude-md` and `pvc-git-commit-message-local` next to it in the same `.claude/skills/` folder, in the project or in your user folder. Restart Claude Code so the skill loads. Verify by asking "What skills are available?" and confirming pvc-end-set appears.
