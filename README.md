@@ -1,5 +1,7 @@
 # pvc-stack
 
+<p align="center"><img src="assets/pvc-stack-banner.jpg" alt="pvc-stack"></p>
+
 > A Claude Code setup in one `.claude` folder: skills, hooks, output styles and a status line.
 
 Made by Alexandru Bogdan. This is the setup I use with Claude Code every day, cleaned up and put under one MIT license. The repo has the same shape as the `.claude` folder of a project, so you can copy the whole folder into a project, or take one item.
