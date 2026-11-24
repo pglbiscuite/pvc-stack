@@ -6,7 +6,11 @@ Made by Alexandru Bogdan. This is the setup I use with Claude Code every day, cl
 
 <!-- stack:catalog:start -->
 
-No items yet.
+**Skills**
+
+| Skill | Version | What it does |
+|---|---|---|
+| [pvc-claude-md](.claude/skills/pvc-claude-md/) | 0.0.14 | Audit, improve and update a CLAUDE.md file, and rotate old lab notes. |
 
 <!-- stack:catalog:end -->
 
