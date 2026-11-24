@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/pvc-claude-md-banner.jpg" alt="pvc-claude-md"></p>
 
-![version](https://img.shields.io/badge/version-v0.0.14-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
+![version](https://img.shields.io/badge/version-v0.0.15-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
 
 > Audit, optimize, update, and rotate CLAUDE.md files. Pro Vibe Coding's all-in-one CLAUDE.md tool.
 
@@ -179,6 +179,7 @@ Every audit report the skill produces aims to pass on:
 
 ## Changelog
 
+- **v0.0.15 (2026-11-24).** SKILL.md drops its `allowed-tools` line, which let the skill write files and run shell commands with no prompt. Claude Code now asks first, by the rules of your own settings. Before the first write to `CLAUDE.local.md`, the skill checks that git ignores the file. When git does not, it adds the file to `.gitignore`, and it keeps private detail out of the file when git tracks it already. The lab-notes count now uses `grep -Ec`: plain grep read the pattern wrong and counted zero. A rotation moves every entry past the latest 10 and raises the header count by the number moved. Discovery finds every CLAUDE.md, LABS.md and CLAUDE.local.md with no cap of 20, and skips `node_modules` and `.git`. The structure listing tells files from folders and handles a root with no folders. `LABS.md` sits in the same folder as its CLAUDE.md, also when that CLAUDE.md is in a subfolder.
 - **v0.0.14 (2026-11-21).** Moved into the pvc-stack repo and relicensed under MIT. One `LICENSE` file at the root of the repo covers every skill, so the skill folder carries no license files of its own. Install is now a copy of the folder `.claude/skills/pvc-claude-md`. No change to what the skill does.
 - **v0.0.8 to v0.0.13 (2026-09).** README artwork and banner, install notes, and two wording fixes in the skill text: the score label for 1 reads "weak" in the scale text to match the audit report, and the lab-notes header string is quoted the same way everywhere.
 - **v0.0.7 (2026-09-01).** First public release. Also: the personal memory file is now named correctly as `CLAUDE.local.md`, session learnings get a strip-private-detail rule, a STRUCTURE block no longer raises the Pillar 1 score, and the LABS.md header template is literal text.

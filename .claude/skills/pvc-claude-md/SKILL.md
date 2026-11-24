@@ -1,7 +1,6 @@
 ---
 name: pvc-claude-md
 description: Audit, optimize, and update CLAUDE.md files with session learnings. Pro Vibe Coding's all-in-one CLAUDE.md tool. Use when the user says "audit my CLAUDE.md", "improve CLAUDE.md", "update CLAUDE.md", "review claude.md", "is my CLAUDE.md good", "check CLAUDE.md", "PVC CLAUDE.md", "rotate lab notes", "compact lab notes", "archive old lab notes", or wants to capture session learnings into project memory. Combines a 4-pillar quality framework, audit-and-improve workflow, session-learning capture, and lab notes rotation (latest 10 in CLAUDE.md, older archived to LABS.md) into one tool. Trigger this skill whenever a user mentions CLAUDE.md maintenance, project memory, or wants to keep their CLAUDE.md current. Even if they don't explicitly say "CLAUDE.md", trigger this when they reference project context, project memory, system prompts for their codebase, or "what Claude knows about my project".
-allowed-tools: Read, Edit, Write, Glob, Grep, Bash
 license: MIT
 ---
 
@@ -9,7 +8,7 @@ license: MIT
 
 # PVC CLAUDE.md
 
-**Version:** v0.0.14
+**Version:** v0.0.15
 
 Audit, optimize, and update CLAUDE.md files using the 4-pillar quality framework. Combines audit, improvement, session-learning capture, and lab notes rotation into one workflow.
 
@@ -36,7 +35,7 @@ Score each pillar 0-3 (0 = missing, 1 = weak, 2 = adequate, 3 = strong).
 
 ## Lab Notes Rotation (v0.0.2+)
 
-CLAUDE.md keeps the **latest 10 lab notes**. Older entries archive to a sibling `LABS.md` in the project root.
+CLAUDE.md keeps the **latest 10 lab notes**. Older entries archive to a `LABS.md` in the same folder as that CLAUDE.md (the project root for the root CLAUDE.md).
 
 **Why this matters:** CLAUDE.md is loaded into every Claude session's context. Too many lab notes = too many tokens spent on stale lessons. Rolling 10 keeps per-session cost low while preserving all history in `LABS.md`.
 
@@ -69,9 +68,9 @@ body...
 ### When adding a new lab note (extends Step 3 of the workflow)
 
 1. Insert the new entry at the BOTTOM of the `## Lab notes` section in CLAUDE.md (chronological: oldest first / newest last)
-2. Count entries in the section (grep `^### [0-9]{4}-` in the Lab notes section)
-3. If count > 10, MOVE the topmost (oldest) entry from CLAUDE.md to the BOTTOM of `LABS.md`
-4. Update the count in the section header: ``**N older entries archived in [`LABS.md`](LABS.md).**`` (increment N by 1)
+2. Count entries in the section (`grep -Ec '^### [0-9]{4}-'` or the Grep tool, in the Lab notes section)
+3. If count > 10, MOVE the oldest (count - 10) entries, oldest first, from CLAUDE.md to the BOTTOM of `LABS.md`
+4. When step 3 moved entries, raise the count in the section header by the number moved: ``**N older entries archived in [`LABS.md`](LABS.md).**``
 
 If the count is exactly 10 after adding the new entry, no rotation needed.
 
@@ -108,7 +107,7 @@ When the markers exist, every run of this skill refreshes the block. No markers 
 
 ### How to sync
 
-1. Find where the mapped folders live before listing anything. Read the block: if it names a home folder for the steps (for example `.pvc_content_pipeline/`), list inside that folder (`ls -a`). Otherwise list the project root (`ls -d */`). Skip infrastructure dotfolders like `.claude` and `.git`, but never skip a dotfolder the block itself names as the home
+1. Find where the mapped folders live before listing anything. Read the block: if it names a home folder for the steps (for example `.pvc_content_pipeline/`), list inside that folder (`ls -ap`: folders end in `/`, files do not). Otherwise list the project root (`ls -d */ 2>/dev/null`; no output means no folders). Skip infrastructure dotfolders like `.claude` and `.git`, but never skip a dotfolder the block itself names as the home
 2. Compare that listing against the folder names inside the block (mermaid node labels and any folder lists must match the real folder names exactly)
 3. In sync: leave the block untouched, report `Structure: in sync` in the audit
 4. Drifted (folder added, renamed, or removed): regenerate the mermaid and folder notes inside the markers from the real listing, report `Structure: drifted (N changes)` with a diff. Node labels stay identical to the exact folder names
@@ -125,10 +124,10 @@ This feeds Pillar 1 (Knowledge Compression) in one direction only. A structure b
 Find all CLAUDE.md and LABS.md files:
 
 ```bash
-find . -name "CLAUDE.md" -o -name "LABS.md" -o -name "CLAUDE.local.md" 2>/dev/null | head -20
+find . \( -name node_modules -o -name .git \) -prune -o -type f \( -name "CLAUDE.md" -o -name "LABS.md" -o -name "CLAUDE.local.md" \) -print 2>/dev/null
 ```
 
-`CLAUDE.md` is shared with the team. `LABS.md` is the lab notes archive (also shared, but rarely loaded into context). `CLAUDE.local.md` is personal and gitignored.
+`CLAUDE.md` is shared with the team. `LABS.md` is the lab notes archive (also shared, but rarely loaded into context). `CLAUDE.local.md` is personal, but git ignores it only when an ignore rule lists it, such as a line in the project's `.gitignore`.
 
 ### Step 2: Audit
 
@@ -162,7 +161,7 @@ If the CLAUDE.md contains a `STRUCTURE:BEGIN` marker, run the Project Structure 
 
 If the user is at session end or asks to "update CLAUDE.md with what we learned", reflect on what was missing earlier in the session: bash commands discovered, patterns followed, gotchas hit, workflows that worked or failed. Draft additions that would help future sessions.
 
-Before drafting, strip private detail from every proposed line: API keys, tokens, passwords, connection strings, absolute machine paths (home folders, drive letters), and client or customer names. CLAUDE.md is committed and shared. When a lesson needs a private detail to make sense, propose it for `CLAUDE.local.md` instead and say so in the diff.
+Before drafting, strip private detail from every proposed line: API keys, tokens, passwords, connection strings, absolute machine paths (home folders, drive letters), and client or customer names. CLAUDE.md is committed and shared. When a lesson needs a private detail to make sense, propose it for `CLAUDE.local.md` instead and say so in the diff. Before the first write to `CLAUDE.local.md`, run `git check-ignore -q CLAUDE.local.md`. Exit 0 means it is ignored and untracked. Any other result: add the line `CLAUDE.local.md` to the project's `.gitignore` in the same diff, and when `git ls-files CLAUDE.local.md` prints the path, the file is tracked already, so keep the private detail out of it and tell the user.
 
 For each new lab note: follow the rotation steps above so CLAUDE.md stays at <=10 entries.
 
@@ -179,7 +178,7 @@ Show diffs before editing. For each addition:
 ```
 ````
 
-If the rotation will run (entries about to exceed 10), also show:
+If the rotation will run (entries about to exceed 10), also show this, with one **Entry being archived** line for each entry that moves:
 
 ```markdown
 ### Rotation: oldest entry moves to LABS.md
@@ -203,7 +202,7 @@ If Pillar 4 is missing, propose adding to the bottom of CLAUDE.md:
      add an entry here with what happened and what to do (or not do) next time.
      Format: `### YYYY-MM-DD: short title` then 1-2 sentences.
      Once this section exceeds 10 entries, /pvc-claude-md will rotate the oldest
-     entry to LABS.md. Both files live at the project root. -->
+     entry to LABS.md. Both files live in the same folder. -->
 ```
 
 ## Style
