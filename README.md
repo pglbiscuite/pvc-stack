@@ -11,6 +11,7 @@ Made by Alexandru Bogdan. This is the setup I use with Claude Code every day, cl
 | Skill | Version | What it does |
 |---|---|---|
 | [pvc-claude-md](.claude/skills/pvc-claude-md/) | 0.0.14 | Audit, improve and update a CLAUDE.md file, and rotate old lab notes. |
+| [pvc-git-commit-message-local](.claude/skills/pvc-git-commit-message-local/) | 0.4.2 | Write a commit message in the PVC format and commit locally, with no push. |
 
 <!-- stack:catalog:end -->
 
