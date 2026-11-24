@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/pvc-git-commit-message-local-banner.jpg" alt="pvc-git-commit-message-local"></p>
 
-![version](https://img.shields.io/badge/version-v0.4.2-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
+![version](https://img.shields.io/badge/version-v0.4.3-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
 
 > Writes a git commit message in PVC format from `git status` and `git diff`, then runs the commit locally. Never pushes.
 
@@ -128,7 +128,7 @@ Rules:
 
 What this skill does at commit time:
 
-- Stages the specific paths for the work at hand. It avoids `git add -A` unless the repo is known-clean, and if the repo holds gitignored private folders it confirms a path is ignored before staging near it.
+- Stages the specific paths for the work at hand. It avoids `git add -A` unless the repo is known-clean, and if the repo holds gitignored private folders it confirms a path is ignored before staging near it. When you choose to commit only the staged changes, it stages nothing more.
 - Commits through a heredoc via the Bash tool so the multi-line message survives Windows shell quoting.
 - Never pushes, never adds a remote, never sets an upstream. If the host project's CLAUDE.md allows pushing, that rule belongs to the project, not to this skill; the skill still never pushes on its own.
 - Reports the short hash for each repo committed.
@@ -172,6 +172,7 @@ Grounded in:
 
 ## Changelog
 
+- **v0.4.3 (2026-11-24).** Fixed small errors that a review found before the first release of the pvc-stack repo. REQUIREMENTS.md gives both git identity commands with a value in quotes, since the old commands only read the setting. Step 1 runs `git status --short --untracked-files=all`, so each new file inside a new folder shows by name. When you choose to commit only the staged changes, the skill stages nothing more. When only staged or only unstaged changes exist, new files of the same work get staged with them by name. The version scan reads the whole history when the last 10 commits hold no version. The Bash example commits through a quoted heredoc. Format rule 1 and the note on the paste block now match what Claude runs and prints. Two bullets of Example 2 and the Step 4 sample follow the past-tense and Title Case rules.
 - **v0.4.2 (2026-11-23).** Moved into the pvc-stack repo and relicensed under MIT. One `LICENSE` file at the root of the repo covers every skill, so the skill folder carries no license files of its own. Install is now a copy from the pvc-stack repo.
 - **v0.4.1 (2026-09-22).** README shows the cream banner `assets/pvc-git-commit-message-local-banner.jpg` full width under the title, the card art on a sheet in its own paper color with the PVC five-bar mark bottom right; the social preview matches it with the mark bottom left. Docs only, no change to what the skill does.
 - **v0.4.0 (2026-09-17).** First public release. Added REQUIREMENTS.md and the README artwork under `assets/`. Format rule 8 (no attribution trailers) added 2026-09-16. README rewritten for a public reader.

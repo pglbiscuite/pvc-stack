@@ -3,7 +3,7 @@ name: pvc-git-commit-message-local
 description: Writes a git commit message in PVC format. First line is `vX.Y.Z - headline`, then `- one change per line` bullets. Bumps the semantic version from the most recent commit based on diff scope (PATCH for fixes, MINOR for new functionality, MAJOR for breaking changes). Reads `git status`, `git diff`, and `git log` so bullets describe real changes not hallucinated ones. In this variant Claude also EXECUTES the commit LOCALLY in the host project (see the Local Execution Steps); never pushes, never adds remotes. Use when asked to "commit this", "write a commit message", "make a commit", "git commit", "commit the session", or on situational phrasings like "wrap this up", "save my changes", "message for these changes", "what should I commit this as".
 metadata:
   author: pvc
-  version: "0.4.2"
+  version: "0.4.3"
   adapted-from: the print-only variant of this skill, reconciled for local execution (2026-07-15); public packaging added 2026-09-17
   sources: [semver-2.0.0, conventional-commits-1.0.0, tim-pope-git-commit-style, keep-a-changelog-1.1.0, pvc-voice-rules]
 license: MIT
@@ -27,7 +27,7 @@ vX.Y.Z - Headline Summarizing the Main Change
 
 Rules:
 
-1. First line is `vX.Y.Z - headline`. Semantic version, space, dash, space, short headline. **No quote characters anywhere.** The user supplies shell quoting around the whole message. **A blank line follows the headline before the bullets begin**, the git subject and body separator (Tim Pope); without it git treats the whole message as one subject line and log and graph views show the bullets run together.
+1. First line is `vX.Y.Z - headline`. Semantic version, space, dash, space, short headline. **No quote characters anywhere.** The commit command supplies the shell quoting around the whole message (the heredoc or here-string Claude runs). **A blank line follows the headline before the bullets begin**, the git subject and body separator (Tim Pope); without it git treats the whole message as one subject line and log and graph views show the bullets run together.
 2. Body lines start with `- ` (hyphen, single space) followed by one concrete change. One change per bullet, past-tense verbs (added, fixed, changed, removed, renamed, wired, refactored).
 3. The message ends after the last bullet. No closing quote, no trailing newline, no extra punctuation.
 4. 3 to 7 bullets is the target. Under 3 is acceptable when the diff contains fewer distinct changes (do not pad to hit 3). Over 7, group related changes into fewer bullets (see Example 7).
@@ -96,7 +96,7 @@ Three triggering shapes:
 Run these read-only commands in parallel:
 
 ```bash
-git status --short
+git status --short --untracked-files=all
 git diff
 git diff --staged
 git log -10 --pretty=format:"%h %s"
@@ -104,7 +104,7 @@ git log -10 --pretty=format:"%h %s"
 
 Interpret:
 
-- `git status --short` tells you what files moved (added / modified / deleted / renamed)
+- `git status --short` tells you what files moved (added / modified / deleted / renamed). With `--untracked-files=all` it lists each untracked file by name, also the files inside a new folder
 - `git diff` shows unstaged content changes
 - `git diff --staged` shows staged content changes (this is what will be in the commit)
 - `git log -10` gives the version history to bump from
@@ -115,7 +115,7 @@ Four cases, in priority order:
 
 1. `git status --short` is empty AND `git diff` AND `git diff --staged` are all empty: stop. Working tree is clean, nothing to commit. Print the refusal template (see "Refusal Template" below). Do not invent a message.
 2. `git status` shows untracked files (`??` prefix) AND both diffs are empty: this is the **untracked-only** case (first commit, or fresh files not yet staged). Treat the untracked files as the change set. Infer bullet content from filenames and conventional file purpose (`package.json` means dependencies, `tsconfig.json` TypeScript config, `.gitignore` ignored paths, and so on). Add a one-line note above the rationale: `Files are untracked. Staging them by name, then committing.`
-3. Only one of `git diff` / `git diff --staged` has content: use that one. No prompt needed.
+3. Only one of `git diff` / `git diff --staged` has content: use that one, plus the untracked files (`??` in `git status --short`) that belong to the same work, staged by name. No prompt needed.
 4. Both `git diff` AND `git diff --staged` have content: in Auto-Mode, default to staged-only and state the choice in the rationale line. Otherwise ask once: `Both staged and unstaged changes exist. Capture STAGED only (suggested) or EVERYTHING?` Then proceed with the chosen set.
 
 ### Refusal Template (Step 1a case 1)
@@ -136,7 +136,7 @@ Next steps:
 Scan `git log` output for the most recent commit message matching the regex `^v(\d+)\.(\d+)\.(\d+)\b`.
 
 - Found: that is the current version. Bump from it (Step 3).
-- Not found and the repo has prior commits: this is the first PVC-format commit. Default the current version to `v0.0.0` and the new version to `v0.0.1` (treat the first PVC commit as a PATCH).
+- Not found and the repo has prior commits: if it has more than those 10, scan the whole history with `git log --pretty=format:%s` the same way. Not found there either: this is the first PVC-format commit. Default the current version to `v0.0.0` and the new version to `v0.0.1` (treat the first PVC commit as a PATCH).
 - Not found and the repo has NO prior commits (first commit ever): use `v0.0.1`.
 
 ### Step 3: Classify the change and pick a bump (User Choice Point)
@@ -172,7 +172,7 @@ Rules:
 - Concrete noun ("the lead-magnet form", "auth callback redirect", "Stripe webhook validator")
 - No vague nouns ("things", "stuff", "updates", "tweaks", "improvements")
 - No PVC-banned phrases (see voice rules below)
-- If the headline would exceed 60 chars, trim with a comma: `"Removed getUser, renamed getCurrentUser to getViewer"` reads cleaner than running long.
+- If the headline would exceed 60 chars, trim with a comma: `"Removed getUser, Renamed getCurrentUser to getViewer"` reads cleaner than running long.
 
 ### Step 5: Write the bullets
 
@@ -213,7 +213,7 @@ Before printing, grep your draft against the PVC ban list. If any match, rewrite
 
 ### Step 7: Print the message, then commit
 
-Print the version-bump rationale line, then the message in a fenced code block. Then EXECUTE the commit per the Local Execution Steps below: stage the named paths, commit through a heredoc so the multi-line message survives Windows shell quoting, and report the short hash. Never push, never add a remote.
+Print the version-bump rationale line, then the message in a fenced code block. Then EXECUTE the commit per the Local Execution Steps below: stage the named paths (none on a STAGED only answer), commit through a heredoc so the multi-line message survives Windows shell quoting, and report the short hash. Never push, never add a remote.
 
 ## Output Rubric
 
@@ -226,7 +226,7 @@ Every message this skill produces must score pass on each dimension.
 | bullet_count | Target 3-7 bullets. Under 3 is acceptable when diff genuinely supports fewer (do not pad). Over 7 must be grouped using the Example 7 pattern. |
 | concrete_subjects | Every bullet names a specific file, function, route, or feature. Zero vague nouns. |
 | voice_consistency | Zero em dashes. Zero matches against the PVC ban list above. |
-| grounded_in_diff | Every bullet maps to a real hunk in `git diff` or `git diff --staged`, OR (untracked-only case) to a real file in `git status --short`. Zero hallucinated changes. |
+| grounded_in_diff | Every bullet maps to a real hunk in `git diff` or `git diff --staged`, OR to a real untracked file in `git status --short` that the commit stages by name. Zero hallucinated changes. |
 | local_commit_executed | The commit runs locally through a heredoc on named paths and the short hash is reported. Zero `git push`, zero remote or upstream changes. |
 | edge_case_coverage | Handles: clean tree (refusal template, no message), first commit / untracked-only (default v0.0.1, ground in filenames, note the untracked files staged by name), no prior PVC-format version in log (default v0.0.0 baseline), staged + unstaged ambiguity (ask once or auto-default to staged in Auto-Mode), repo at 0.y.z (never auto-bump to 1.0.0), binary-only changes (filename-as-evidence with semantic inference like `-dark`, `@2x`), many-file pattern (group into one named bullet per Example 7). |
 | internal_vs_public | New internal-only files default to PATCH, not MINOR. New publicly-exported symbols are MINOR. |
@@ -255,9 +255,9 @@ Diff signal: new file `auth-callback.ts` exposes a new exported function, two ex
 ```
 v0.5.0 - Added Supabase Auth Callback Handler for OAuth Redirects
 
-- New auth-callback.ts module exporting handleOAuthRedirect
+- Added the auth-callback.ts module exporting handleOAuthRedirect
 - Wired the handler into the /api/auth/callback route
-- Login page now redirects to /dashboard after successful OAuth
+- Changed the login page to redirect to /dashboard after successful OAuth
 - Added env var SUPABASE_REDIRECT_URL to .env.example
 ```
 
@@ -434,14 +434,16 @@ v1.4.3 - Fixed Wrong Status Code on /api/leads Validation Error
 
 ### Bash / zsh
 
-Single-quote the whole message. Newlines pass through, no escaping needed:
+Feed the message to git through a quoted heredoc. Newlines pass through and the quoted PVCMSG delimiter stops every expansion:
 
 ```bash
-git commit -m 'v1.4.3 - Fixed Wrong Status Code on /api/leads Validation Error
+git commit -F - <<'PVCMSG'
+v1.4.3 - Fixed Wrong Status Code on /api/leads Validation Error
 
 - Returned 422 instead of 500 when payload missing required fields
 - Added regression test covering the missing-email case
-- Updated error response shape to include the failed field name'
+- Updated error response shape to include the failed field name
+PVCMSG
 ```
 
 ### Cmd.exe (Windows, not recommended)
@@ -459,7 +461,7 @@ The 2026-05-26 format change removed inner quotes from the body so the user cont
 
 ### No paste block
 
-Do NOT append a "paste with" block after the message. The fenced message block is the whole deliverable. Output ends at the closing fence of the message block. Print one of the shell wrapper variants above ONLY if the user explicitly asks how to paste or run the commit from their shell.
+Do NOT append a "paste with" block after the message. On a commit path the only line after the closing fence is `committed <hash>` (see What To Print). Print one of the shell wrapper variants above ONLY if the user explicitly asks how to paste or run the commit from their shell.
 
 ## Local Execution Steps
 
@@ -467,9 +469,12 @@ After producing the message per every rule above, Claude executes the commit
 itself in the host project. Install this variant in the repos where the user wants Claude to run
 the commit. The steps:
 
-1. Stage NAMED paths for the work at hand. Avoid git add -A unless the
-   repo is known-clean; if the repo holds gitignored private folders,
-   confirm a private path is ignored before staging near it.
+1. Stage NAMED paths for the work at hand. On a STAGED only answer
+   (Step 1a case 4, also the Auto-Mode default) stage nothing and commit
+   the index as it is, since git add on a partly staged file pulls in the
+   hunks the user left out. Avoid git add -A unless the repo is
+   known-clean; if the repo holds gitignored private folders, confirm a
+   private path is ignored before staging near it.
 2. Commit via the Bash tool with a heredoc so the multi-line message
    survives Windows shell quoting (a PowerShell here-string works too;
    never single -m lines with embedded newlines).
