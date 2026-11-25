@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/pvc-roadmap-writer-banner.jpg" alt="pvc-roadmap-writer"></p>
 
-![version](https://img.shields.io/badge/version-v0.2.2-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
+![version](https://img.shields.io/badge/version-v0.2.3-blue) ![type](https://img.shields.io/badge/Claude%20Code-skill-7C5CFF) ![license](https://img.shields.io/badge/license-MIT-green)
 
 > Writes and updates linear roadmap files: tick-box steps, one bold TLDR line per step, one testable finish line.
 
@@ -33,7 +33,7 @@ A Claude Code skill for anyone who plans work in steps and wants one file to fol
 
 This is a Claude Code skill. Pick the path that matches where you want it available.
 
-**From the pvc-stack repo:** clone `https://github.com/pglbiscuite/pvc-stack`, then copy the folder `.claude/skills/pvc-roadmap-writer` to one of the places listed here. Keep the folder name `pvc-roadmap-writer`: a project or personal skill takes its command name from the directory name.
+**From the pvc-stack repo:** clone `https://github.com/pglbiscuite/pvc-stack`, then copy the folder `.claude/skills/pvc-roadmap-writer` to one of the places listed here. Keep the folder name `pvc-roadmap-writer`: the `name` line in SKILL.md sets the command you type, the folder name works as a command too, and the Agent Skills spec asks for the two to match.
 
 ### Project-local (one repo)
 
@@ -61,25 +61,25 @@ macOS / Linux:  ~/.claude/skills/pvc-roadmap-writer/
 
 ### Polyrepo / monorepo
 
-Place it once at `.claude/skills/pvc-roadmap-writer/` in the directory you open Claude Code from. The skill is available whenever you launch Claude Code from that root.
+In a monorepo, place it once at `.claude/skills/pvc-roadmap-writer/` in the repository root. Claude Code loads it when you start in the root or in any folder below it. With several repos side by side, place it in the folder you open Claude Code from. The skill is available whenever you launch Claude Code from there.
 
 ### As part of a plugin
 
-If you bundle skills as a Claude Code plugin, include `pvc-roadmap-writer/` in the plugin's `skills/` directory. Claude Code finds the skills in that folder when the plugin loads.
+If you bundle skills as a Claude Code plugin, include `pvc-roadmap-writer/` in the plugin's `skills/` directory. Claude Code finds the skills in that folder when the plugin loads. If the plugin is already loaded, run `/reload-plugins` to pick up the new skill.
 
 ### Verify the install
 
-Start a new Claude Code session, then ask:
+In the session you have open, run `/skills` or ask:
 
 ```text
 What skills are available?
 ```
 
-Confirm `pvc-roadmap-writer` appears in the list. The skill needs nothing installed beyond Claude Code, see [REQUIREMENTS.md](REQUIREMENTS.md).
+Confirm `pvc-roadmap-writer` appears in the list. If it is missing, run `/reload-skills`. The skill needs nothing installed beyond Claude Code, see [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Usage
 
-Ask in plain language. Any of these phrasings trigger the skill:
+Ask in plain language. Phrasings like these usually load the skill:
 
 ```text
 make a roadmap for the photo backup script
@@ -88,6 +88,8 @@ plan this out in steps
 turn this idea into a step-by-step plan
 tick step 2, wrote the script today
 ```
+
+To run it for sure, start the message with `/pvc-roadmap-writer`.
 
 Agent response for a new roadmap. The file is the deliverable, so the chat gets two lines:
 
@@ -162,7 +164,7 @@ The rules behind it:
 
 ## Output Rubric
 
-Every roadmap the skill writes is checked against these dimensions before it is saved.
+Before the skill saves a roadmap, Claude checks the draft against the skill's format and hard rules. The table sums them up.
 
 | Dimension | Pass criteria |
 | --- | --- |
@@ -184,6 +186,7 @@ Every roadmap the skill writes is checked against these dimensions before it is 
 
 ## Changelog
 
+- **v0.2.3 (2026-11-25).** The description leads with what the skill makes and names what it is not for: daily todo lists, implementation plans with file-level steps, the plan that plan mode proposes, writing specs, or ROADMAP.md phase lists. The skill still applies when you ask to turn a finished spec into a roadmap, or ask for a roadmap while plan mode is on. Trigger lists, the rubric and the install notes left SKILL.md, so each use loads fewer lines. Sub-work found mid-build goes in as a sub-step under its parent, a rule the rubric held and the hard rules hold now. The out-of-scope list no longer points to a plugin that pvc-stack does not include. It names plan mode or a planning skill you have. The install check runs in the session you have open, and the README gives the right reasons for the folder name and for monorepo loading.
 - **v0.2.2 (2026-11-24).** The worked examples put one idea on each detail line now, as the skill's own rules ask. The tree under Install lists the `assets/` folder.
 - **v0.2.1 (2026-11-23).** Moved into the pvc-stack repo under MIT. One `LICENSE` file at the root of the repo covers every skill, so the skill folder carries no license files of its own. The worked example is a photo backup script now, and this README is new.
 - **v0.2.0 (2026-07-18).** Sub-steps: tick-box items under a step (`4b`, `4c`) for work that runs deeper than the headline, each with its own detail lines and dates.

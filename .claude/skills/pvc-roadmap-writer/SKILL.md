@@ -1,9 +1,9 @@
 ---
 name: pvc-roadmap-writer
-description: Writes and updates linear roadmap files in the PVC style, numbered checkbox steps, one bold Title Case TLDR line per step with short detail under it, checkbox sub-steps when the work runs deeper than the headline, finished steps ticked with dates, and a testable Done when statement as the finish line. Use when asked to "make a roadmap", "roadmap this", "plan this out in steps", "turn this idea into a step-by-step plan", when an idea note or voice transcript needs a linear execution file, or when a step in an existing roadmap gets done or decided and the file needs ticking.
+description: "Writes and updates linear roadmap files: ordered tick-box steps toward one testable finish line. Use when the user says 'make a roadmap', 'roadmap this', 'plan this out in steps', 'turn this idea into a step-by-step plan' or 'what is the path to getting this live? Write it down', when an idea note or voice transcript needs a linear execution file, or when a step in an existing roadmap gets done or decided and the file needs ticking ('tick step 3, we picked the drive today'). Not for daily todo lists, implementation plans with file-level steps, the plan that plan mode proposes, writing specs, or ROADMAP.md phase lists."
 metadata:
   author: pvc
-  version: "0.2.2"
+  version: "0.2.3"
 license: MIT
 ---
 
@@ -11,37 +11,14 @@ license: MIT
 
 # pvc-roadmap-writer
 
-Turns an idea, spec, or raw voice note into one linear roadmap file the owner can follow without trailing behind, and keeps that file current as steps get done. The format: linear steps, TLDR first, detail under it, tick what is done, one checkable finish statement.
-
-## When to Use
-
-- An idea note, voice transcript, or conversation needs to become a step-by-step execution file
-- The user asks for a plan "in steps", "in order", or "like the last roadmap"
-- A step in an existing roadmap got done or decided and the file needs updating
-- A project has a fuzzy goal and needs a testable finish line written down
+Turns an idea, spec, or raw voice note into one linear roadmap file the user can follow without trailing behind, and keeps that file current as steps get done. The format: linear steps, TLDR first, detail under it, tick what is done, one checkable finish statement.
 
 ## What This Skill Does Not Do
 
 - Daily task lists or session todos (use the conversation, not a file)
-- Full implementation plans with file contents and test commands (use superpowers:writing-plans)
-- Specs and design documents (use superpowers:brainstorming to produce the spec first; this skill can then compress the spec into a roadmap)
+- Full implementation plans with file contents and test commands (use plan mode or a planning skill you have)
+- Specs and design documents (write the spec first; this skill can then compress the spec into a roadmap)
 - Project ROADMAP.md ledgers that only list phase names (this skill writes execution roadmaps with a finish line)
-
-## Trigger Examples
-
-Should trigger on:
-
-- "Make a roadmap for the lead magnet page"
-- "Roadmap this idea" (with an idea-XXX.md or voice note in context)
-- "Plan this out in steps like you did the last one"
-- "What's the path to getting this live? Write it down"
-- "Tick step 3, we picked the external drive today"
-
-Should NOT trigger on:
-
-- "What should I do today?" (session planning, no file)
-- "Write the implementation plan for task 4" (writing-plans, needs file-level detail)
-- "Add Phase 3 to the ROADMAP.md checklist" (simple edit, no format to apply)
 
 ## The Format (Core Mechanic)
 
@@ -63,6 +40,7 @@ Hard rules:
 - Bold titles are Title Case: principal words capitalized; a, an, the, and, or, of, to, in, on, for, with, per stay lowercase unless first; code identifiers and filenames preserved as written. Detail lines stay normal sentences
 - One idea per line. Two commitments, conditions, or deliverables never share a line; a parenthetical hiding a second deliverable is a smell, break it into its own sub-step
 - Sub-steps exist only for independently tickable work. A step whose content is one plain detail line stays exactly that; never convert description lines into numbered or checkboxed sub-items
+- Sub-work found mid-build goes in as a checkbox sub-step under its parent step. Never renumber the roadmap for it
 - No em dashes, none of the words that the project's CLAUDE.md bans, hyphen bullets only inside details
 - Work already done before the roadmap exists gets pre-ticked with its real date. Never present finished work as pending
 
@@ -72,7 +50,7 @@ Hard rules:
 2. Confirm the finish line. If the source contains no testable end state, ask for it in one question before writing anything (Path C below). Everything else can be inferred; the finish line cannot
 3. Confirm the save location. Default: `docs/<slug>-roadmap.md` in the current project. If the user names a place, use it. If a roadmap for the same thing already exists at the target, UPDATE it, never write a duplicate beside it
 4. Draft the file in the format above. Pre-tick anything already done, with dates
-5. Verify against the Output Rubric, then save and give the user the two-line confirmation (Path A)
+5. Check the draft against the format and the hard rules, then save and give the user the two-line confirmation (Path A)
 
 For an update pass (a step got done or a decision got made): edit the step line to `[x]` with the date, rewrite its detail lines into the record of what happened, adjust the Done when statement only if the decision changed the finish line, and confirm in one line (Path B).
 
@@ -157,19 +135,3 @@ Chat output (nothing written):
 ```
 What is the checkable statement that means this is DONE? Finish the sentence: this is done when a stranger can ___
 ```
-
-## Output Rubric
-
-Every roadmap produced must pass:
-
-- linear_dependency: steps are in true dependency order; no two adjacent steps could swap freely
-- tldr_first: every step opens with a bold Title Case action phrase under 10 words, detail is 3 lines max
-- record_keeping: every ticked step carries a date and states what happened, not what was planned
-- finish_line: the Done when statement is answerable yes or no by someone outside the project
-- voice: zero em dashes, zero words that the project's CLAUDE.md bans
-- sub_step_discipline: sub-steps (Nb, Nc) appear only for independently tickable work and carry their own detail and dates; a single plain detail line never becomes a numbered or checkboxed sub-item; no line packs two deliverables
-- edge_case_coverage: pre-done work arrives pre-ticked with real dates; a "Decide X" step lists its options and absorbs the decision when ticked; more than 9 steps triggers the merge-or-split question; a missing finish line triggers Path C before any file is written; an existing roadmap at the target path gets updated in place, never duplicated; sub-work discovered mid-build lands as a checkbox sub-step under its parent instead of renumbering the roadmap
-
-## Installation
-
-Place this folder at `<repo>/.claude/skills/pvc-roadmap-writer/` in the projects that use it. Restart Claude Code so the skill loads. Verify by asking "What skills are available?" and confirming pvc-roadmap-writer appears.
