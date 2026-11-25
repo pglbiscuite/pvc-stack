@@ -14,7 +14,7 @@ Made by Alexandru Bogdan. This is the setup I use with Claude Code every day, cl
 |---|---|---|
 | [pvc-claude-md](.claude/skills/pvc-claude-md/) | 0.0.16 | Audit, improve and update a CLAUDE.md file, and rotate old lab notes. |
 | [pvc-end-set](.claude/skills/pvc-end-set/) | 0.1.6 | Close a work set in one go: lab notes, memory notes, a local commit and the /compact line. |
-| [pvc-git-commit-message-local](.claude/skills/pvc-git-commit-message-local/) | 0.4.3 | Write a commit message in the PVC format and commit locally, with no push. |
+| [pvc-git-commit-message-local](.claude/skills/pvc-git-commit-message-local/) | 0.5.0 | Write a commit message in the PVC format and commit locally, with no push. |
 | [pvc-roadmap-writer](.claude/skills/pvc-roadmap-writer/) | 0.2.2 | Write and update linear roadmap files with tick-box steps and one finish line. |
 
 **Output styles**
