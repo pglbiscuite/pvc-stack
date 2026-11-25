@@ -1,11 +1,12 @@
 # Claude Code status line: one simple row.
 #
-#   Opus 5.5 . max | context #------- 17% | week -------- 0% | 5d 14h | ultracode ON
+#   Opus 5.5 . high | context #####--- 63% | 5h ####---- 45% | week #######- 91% | 2h 58m | 5d 14h | ON
 #
 # From the left: the model, the effort level, the context window, then each usage limit that
-# the account has (5 hours, 7 days) with the time left to its reset, then the ultracode switch
-# of the settings files. The real row draws the bars as solid cells and puts a middle dot after
-# the model. The effort word has a color for each level.
+# the account has (5 hours, 7 days), then the time left to each reset in the same order, then
+# the ultracode switch of the settings files as ON or OFF. The real row draws the bars as solid
+# cells and puts a middle dot after the model. The effort word has a color for each level. The
+# time left of the 5-hour limit is purple, and the time left of the week limit is green.
 #
 # Claude Code sends the session as JSON on stdin: https://code.claude.com/docs/en/statusline
 # This file is plain ASCII. The bar cell and the dot are built from character codes, and the
@@ -35,13 +36,15 @@ $CELL = [string][char]0x2588      # one bar cell, a full block
 $DOT = [string][char]0x00B7       # the middle dot between the model and the effort
 $BAR_WIDTHS = @(8, 6, 4, 0)       # tried in this order until the row fits the terminal
 
-# The basic ANSI colors, so the row follows the terminal's own palette. Orange is the one
-# exception: the basic palette has none, so it is a fixed color of the 256-color table.
+# The basic ANSI colors, so the row follows the terminal's own palette. Orange and purple are
+# the two exceptions, and each is a fixed color of the 256-color table: the basic palette has
+# no orange, and its magenta is too close to the pink of ON.
 $COLOR = @{
     cyan   = $ESC + '[36m'
     green  = $ESC + '[32m'
     yellow = $ESC + '[33m'
     orange = $ESC + '[38;5;208m'
+    purple = $ESC + '[38;5;141m'
     red    = $ESC + '[31m'
     blue   = $ESC + '[34m'
     grey   = $ESC + '[90m'
@@ -51,8 +54,9 @@ $COLOR = @{
 }
 $RESET = $ESC + '[0m'
 
-# The usage limits in the order they are drawn: the key in rate_limits, then the label.
-$WINDOWS = @(@('five_hour', '5h'), @('seven_day', 'week'))
+# The usage limits in the order they are drawn: the key in rate_limits, the label, then the
+# color of the time left to its reset. The times come after all limits, in the same order.
+$WINDOWS = @(@('five_hour', '5h', 'purple'), @('seven_day', 'week', 'green'))
 
 # The color of each effort word. The word max gets three colors, and any other word stays plain.
 $EFFORT_TONES = @(@('low', 'green'), @('medium', 'yellow'), @('high', 'orange'), @('xhigh', 'red'))
@@ -265,6 +269,7 @@ function Get-Row($data, [double]$now, [int]$barWidth, [bool]$times, $ultra) {
     Add-Seg $segs 'grey' ' | '
     Add-Meter $segs 'context' $used $barWidth
 
+    $lefts = New-Object System.Collections.ArrayList      # the times wait until all limits are drawn
     foreach ($window in $WINDOWS) {
         $entry = Get-Field $data @('rate_limits', $window[0])
         $pct = ConvertTo-Number (Get-Field $entry @('used_percentage'))
@@ -273,14 +278,15 @@ function Get-Row($data, [double]$now, [int]$barWidth, [bool]$times, $ultra) {
         Add-Meter $segs $window[1] $pct $barWidth
         if ($times) {
             $left = Get-Left (Get-Field $entry @('resets_at')) $now
-            if ($left) {
-                Add-Seg $segs 'grey' ' | '
-                Add-Seg $segs 'green' $left
-            }
+            if ($left) { Add-Seg $lefts $window[2] $left }
         }
     }
+    foreach ($pair in $lefts) {
+        Add-Seg $segs 'grey' ' | '
+        Add-Seg $segs $pair[0] $pair[1]
+    }
     if ($ultra -is [bool]) {
-        Add-Seg $segs 'grey' ' | ultracode '
+        Add-Seg $segs 'grey' ' | '
         if ($ultra) { Add-Seg $segs 'pink' 'ON' } else { Add-Seg $segs 'grey' 'OFF' }
     }
     return ,$segs
@@ -413,7 +419,7 @@ function Invoke-SelfTest {
     $junk = Get-Sample ('{"model":5,"effort":"max","fast_mode":"yes","context_window":{"used_percentage":"12"},' +
         '"rate_limits":{"five_hour":[1],"seven_day":{"used_percentage":true,"resets_at":"x"}}}')
 
-    # 1. the row of the picture
+    # 1. one limit, the week, and the effort word max
     Test-Same 'the full row' (Get-PlainRow $full 200) ('Opus 5.5 ' + $DOT + ' max | context #------- 17% | week -------- 0% | 5d 14h')
     $painted = Get-Painted (Get-Fitted $full $now 200)
     Test-Same 'one line' ($painted.Contains("`n") -or $painted.Contains("`r")) $false
@@ -422,14 +428,37 @@ function Invoke-SelfTest {
     Test-Same 'the empty part of a bar is the dark slot' $painted.Contains($COLOR['track'] + ($CELL * 7) + $RESET) $true
     Test-Same 'the time left is green' $painted.Contains($COLOR['green'] + '5d 14h' + $RESET) $true
 
-    # 2. both limits, another effort word
-    Test-Same 'both limits' (Get-PlainRow $both 200) ('Opus 5.5 ' + $DOT + ' high | context #####--- 63% | 5h ####---- 45% | 2h 58m | week #######- 91% | 5d 14h')
+    # 2. both limits, another effort word: the bars first, then the times
+    Test-Same 'both limits' (Get-PlainRow $both 200) ('Opus 5.5 ' + $DOT + ' high | context #####--- 63% | 5h ####---- 45% | week #######- 91% | 2h 58m | 5d 14h')
     $painted = Get-Painted (Get-Fitted $both $now 200)
-    Test-Same 'the bar before a time is grey' $painted.Contains($COLOR['grey'] + ' | ' + $RESET + $COLOR['green'] + '2h 58m' + $RESET) $true
+    Test-Same 'the bar before a time is grey' $painted.Contains($COLOR['grey'] + ' | ' + $RESET + $COLOR['purple'] + '2h 58m' + $RESET) $true
     Test-Same 'the bar before the other time is grey' $painted.Contains($COLOR['grey'] + ' | ' + $RESET + $COLOR['green'] + '5d 14h' + $RESET) $true
     Test-Same 'high is orange' $painted.Contains($COLOR['orange'] + 'high' + $RESET) $true
     Test-Same '63 is yellow' $painted.Contains($COLOR['yellow'] + '63%' + $RESET) $true
     Test-Same '91 is red' $painted.Contains($COLOR['red'] + '91%' + $RESET) $true
+
+    # 2b. the times come after all bars: the 5-hour time in purple, then the week time in green
+    Test-Same 'purple is a color of the 256-color table' $COLOR['purple'] ($ESC + '[38;5;141m')
+    Test-Same 'the pink of ON is the bright magenta' $COLOR['pink'] ($ESC + '[95m')
+    Test-Same 'the 5-hour time is purple' $painted.Contains($COLOR['purple'] + '2h 58m' + $RESET) $true
+    Test-Same 'the week time is green' $painted.Contains($COLOR['green'] + '5d 14h' + $RESET) $true
+    $tail = $COLOR['red'] + '91%' + $RESET + $COLOR['grey'] + ' | ' + $RESET + $COLOR['purple'] + '2h 58m' + $RESET +
+        $COLOR['grey'] + ' | ' + $RESET + $COLOR['green'] + '5d 14h' + $RESET
+    Test-Same 'both times come after both bars' $painted.EndsWith($tail, [System.StringComparison]::Ordinal) $true
+
+    # 2c. one limit only, and a limit with no time: each time keeps the color of its own limit
+    $fiveRow = Get-Sample ('{"model":{"display_name":"Opus 5.5"},"effort":{"level":"high"},"context_window":{"used_percentage":63.4},' +
+        '"rate_limits":{"five_hour":{"used_percentage":45,"resets_at":' + [string][long]$five + '}}}')
+    Test-Same 'one limit: the 5-hour bar, then its time' (Get-PlainRow $fiveRow 200 $true) ('Opus 5.5 ' + $DOT + ' high | context #####--- 63% | 5h ####---- 45% | 2h 58m | ON')
+    Test-Same 'one limit: the 5-hour time is purple' (Get-Painted (Get-Fitted $fiveRow $now 200)).EndsWith($COLOR['grey'] + ' | ' + $RESET + $COLOR['purple'] + '2h 58m' + $RESET, [System.StringComparison]::Ordinal) $true
+    $noFive = Get-Sample ('{"model":{"display_name":"Opus 5.5"},"effort":{"level":"high"},"context_window":{"used_percentage":63.4},' +
+        '"rate_limits":{"five_hour":{"used_percentage":45,"resets_at":"soon"},"seven_day":{"used_percentage":91,"resets_at":' + [string][long]$week + '}}}')
+    Test-Same 'a 5-hour limit with no reset time gets no time' (Get-PlainRow $noFive 200) ('Opus 5.5 ' + $DOT + ' high | context #####--- 63% | 5h ####---- 45% | week #######- 91% | 5d 14h')
+    Test-Same 'the week time stays green with no 5-hour time' (Get-Painted (Get-Fitted $noFive $now 200)).Contains($COLOR['green'] + '5d 14h' + $RESET) $true
+    $noWeek = Get-Sample ('{"model":{"display_name":"Opus 5.5"},"effort":{"level":"high"},"context_window":{"used_percentage":63.4},' +
+        '"rate_limits":{"five_hour":{"used_percentage":45,"resets_at":' + [string][long]$five + '},"seven_day":{"used_percentage":91,"resets_at":' + [string][long]($now - 5) + '}}}')
+    Test-Same 'a week limit with a past reset gets no time' (Get-PlainRow $noWeek 200) ('Opus 5.5 ' + $DOT + ' high | context #####--- 63% | 5h ####---- 45% | week #######- 91% | 2h 58m')
+    Test-Same 'the 5-hour time stays purple as the only time' (Get-Painted (Get-Fitted $noWeek $now 200)).Contains($COLOR['purple'] + '2h 58m' + $RESET) $true
 
     # 3. an account with no limits, and the remaining percent
     Test-Same 'no limits, no effort' (Get-PlainRow $bare 200) 'Sonnet 5.5 | context ##------ 30%'
@@ -476,10 +505,10 @@ function Invoke-SelfTest {
         Test-Same ('fits {0} columns' -f $cols) ($row.Length -gt 0 -and $row.Length -le $limit) $true
     }
     # the widths of this row: 94 with bars of 8 cells, 88 with 6, 82 with 4, 67 with no bars, 49 with no times
-    $wide = 'Opus 5.5 ' + $DOT + ' high | context #####--- 63% | 5h ####---- 45% | 2h 58m | week #######- 91% | 5d 14h'
-    $six = 'Opus 5.5 ' + $DOT + ' high | context ####-- 63% | 5h ###--- 45% | 2h 58m | week #####- 91% | 5d 14h'
-    $four = 'Opus 5.5 ' + $DOT + ' high | context ###- 63% | 5h ##-- 45% | 2h 58m | week ###- 91% | 5d 14h'
-    $noBars = 'Opus 5.5 ' + $DOT + ' high | context 63% | 5h 45% | 2h 58m | week 91% | 5d 14h'
+    $wide = 'Opus 5.5 ' + $DOT + ' high | context #####--- 63% | 5h ####---- 45% | week #######- 91% | 2h 58m | 5d 14h'
+    $six = 'Opus 5.5 ' + $DOT + ' high | context ####-- 63% | 5h ###--- 45% | week #####- 91% | 2h 58m | 5d 14h'
+    $four = 'Opus 5.5 ' + $DOT + ' high | context ###- 63% | 5h ##-- 45% | week ###- 91% | 2h 58m | 5d 14h'
+    $noBars = 'Opus 5.5 ' + $DOT + ' high | context 63% | 5h 45% | week 91% | 2h 58m | 5d 14h'
     $noTimes = 'Opus 5.5 ' + $DOT + ' high | context 63% | 5h 45% | week 91%'
     Test-Same 'the width of the full row' $wide.Length 94
     Test-Same 'the full bars fit exactly' (Get-PlainRow $both 94) $wide
@@ -543,21 +572,33 @@ function Invoke-SelfTest {
     Test-Same 'a missing step' ($null -eq (Get-Field $full @('model', 'nope', 'deeper'))) $true
     Test-Same 'a step into text' ($null -eq (Get-Field $full @('model', 'display_name', 'Length'))) $true
 
-    # 8. the ultracode part of the row
-    Test-Same 'ultracode on' (Get-PlainRow $full 200 $true) ('Opus 5.5 ' + $DOT + ' max | context #------- 17% | week -------- 0% | 5d 14h | ultracode ON')
-    Test-Same 'ultracode off' (Get-PlainRow $full 200 $false) ('Opus 5.5 ' + $DOT + ' max | context #------- 17% | week -------- 0% | 5d 14h | ultracode OFF')
-    Test-Same 'no ultracode key: no such part' (Get-PlainRow $full 200 $null).Contains('ultracode') $false
-    Test-Same 'a value that is no true or false: no such part' (Get-PlainRow $full 200 'yes').Contains('ultracode') $false
+    # 8. the ultracode part of the row: a grey bar, then ON or OFF with no word in front
+    $noPart = 'Opus 5.5 ' + $DOT + ' max | context #------- 17% | week -------- 0% | 5d 14h'
+    Test-Same 'ultracode on' (Get-PlainRow $full 200 $true) ($noPart + ' | ON')
+    Test-Same 'ultracode off' (Get-PlainRow $full 200 $false) ($noPart + ' | OFF')
+    Test-Same 'no ultracode key: no such part' (Get-PlainRow $full 200 $null) $noPart
+    Test-Same 'a value that is no true or false: no such part' (Get-PlainRow $full 200 'yes') $noPart
+    Test-Same 'both limits and the part' (Get-PlainRow $both 200 $true) ($wide + ' | ON')
+    Test-Same 'the word ultracode is not in the row' (Get-PlainRow $both 200 $true).Contains('ultracode') $false
     Test-Same 'ON is pink' (Get-Painted (Get-Fitted $full $now 200 $true)).Contains($COLOR['pink'] + 'ON' + $RESET) $true
     Test-Same 'OFF is grey' (Get-Painted (Get-Fitted $full $now 200 $false)).Contains($COLOR['grey'] + 'OFF' + $RESET) $true
-    # the widths with the part: 109 with bars of 8 cells, 82 with no bars, 64 with no times, 49 without the part
-    Test-Same 'with the part the full bars fit exactly' (Get-PlainRow $both 109 $true) ($wide + ' | ultracode ON')
-    Test-Same 'one column less: shorter bars, the part stays' (Get-PlainRow $both 108 $true) ($six + ' | ultracode ON')
-    Test-Same 'no bars and the part fit exactly' (Get-PlainRow $both 82 $true) ($noBars + ' | ultracode ON')
-    Test-Same 'the times go before the part' (Get-PlainRow $both 81 $true) ($noTimes + ' | ultracode ON')
-    Test-Same 'no times and the part fit exactly' (Get-PlainRow $both 64 $true) ($noTimes + ' | ultracode ON')
-    Test-Same 'then the part goes' (Get-PlainRow $both 63 $true) $noTimes
+    $before = $COLOR['green'] + '5d 14h' + $RESET + $COLOR['grey'] + ' | ' + $RESET
+    Test-Same 'pink ON ends the row, right after the grey bar' (Get-Painted (Get-Fitted $full $now 200 $true)).EndsWith($before + $COLOR['pink'] + 'ON' + $RESET, [System.StringComparison]::Ordinal) $true
+    Test-Same 'grey OFF ends the row, right after the grey bar' (Get-Painted (Get-Fitted $full $now 200 $false)).EndsWith($before + $COLOR['grey'] + 'OFF' + $RESET, [System.StringComparison]::Ordinal) $true
+    # the widths with ON: 99 with bars of 8 cells, 72 with no bars, 54 with no times, 49 without the part. OFF is one more.
+    Test-Same 'the width of the full row with ON' (Get-PlainRow $both 200 $true).Length 99
+    Test-Same 'the width of the full row with OFF' (Get-PlainRow $both 200 $false).Length 100
+    Test-Same 'with the part the full bars fit exactly' (Get-PlainRow $both 99 $true) ($wide + ' | ON')
+    Test-Same 'one column less: shorter bars, the part stays' (Get-PlainRow $both 98 $true) ($six + ' | ON')
+    Test-Same 'no bars and the part fit exactly' (Get-PlainRow $both 72 $true) ($noBars + ' | ON')
+    Test-Same 'the times go before the part' (Get-PlainRow $both 71 $true) ($noTimes + ' | ON')
+    Test-Same 'no times and the part fit exactly' (Get-PlainRow $both 54 $true) ($noTimes + ' | ON')
+    Test-Same 'then the part goes' (Get-PlainRow $both 53 $true) $noTimes
     Test-Same 'and then the row is cut after a number' (Get-PlainRow $both 48 $true) ('Opus 5.5 ' + $DOT + ' high | context 63% | 5h 45%')
+    Test-Same 'with OFF the full bars fit exactly' (Get-PlainRow $both 100 $false) ($wide + ' | OFF')
+    Test-Same 'with OFF one column less: shorter bars' (Get-PlainRow $both 99 $false) ($six + ' | OFF')
+    Test-Same 'with OFF no times and the part fit exactly' (Get-PlainRow $both 55 $false) ($noTimes + ' | OFF')
+    Test-Same 'with OFF then the part goes' (Get-PlainRow $both 54 $false) $noTimes
     foreach ($cols in @(200, 120, 100, 80, 60, 40, 20, 5, 1)) {
         $limit = Get-Limit ([string]$cols)
         $row = Get-PlainRow $both $limit $false

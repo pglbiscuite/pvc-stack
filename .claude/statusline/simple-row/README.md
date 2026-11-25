@@ -2,10 +2,10 @@
 
 A status line for Claude Code in one row: the model, the effort level, the context window, your usage limits and the ultracode switch.
 
-**Version:** 0.3.1
+**Version:** 0.4.0
 
 ```
-Opus 5.5 · max | context █░░░░░░░ 17% | week ░░░░░░░░ 0% | 5d 14h | ultracode ON
+Opus 5.5 · high | context █████░░░ 63% | 5h ████░░░░ 45% | week ███████░ 91% | 2h 58m | 5d 14h | ON
 ```
 
 In the terminal the empty part of a bar is a dark slot. This page draws it as `░`.
@@ -15,21 +15,27 @@ In the terminal the empty part of a bar is a dark slot. This page draws it as `�
 | Part | Meaning |
 |---|---|
 | `Opus 5.5` | The model of the session |
-| `max` | The effort level, in a color for each level: `low` green, `medium` yellow, `high` orange, `xhigh` red. The word `max` gets three colors |
+| `high` | The effort level, in a color for each level: `low` green, `medium` yellow, `high` orange, `xhigh` red. The word `max` gets three colors |
 | `context` | How full the context window is |
-| `5h` | The 5-hour usage limit, then the time left to its reset. It shows when your plan has such a limit |
-| `week` | The 7-day usage limit, then the time left to its reset |
-| `ultracode` | `ON` in pink or `OFF` in grey, from the `ultracode` key of your settings files |
+| `5h` | The 5-hour usage limit. It shows when your plan has such a limit |
+| `week` | The 7-day usage limit |
+| `2h 58m` | The time left to the reset of the 5-hour limit, in purple |
+| `5d 14h` | The time left to the reset of the 7-day limit, in green |
+| `ON` | The ultracode switch: `ON` in pink or `OFF` in grey, from the `ultracode` key of your settings files |
+
+The times come after the limits, in the same order. A limit with no known reset shows no time.
 
 A bar turns yellow from 60 percent and red from 85 percent.
 
-The colors follow the palette of your terminal. Orange is the one exception: the basic palette has no orange, so the row uses a fixed color of the 256-color table for it.
+The colors follow the palette of your terminal. Orange and purple are the two exceptions, and the row uses a fixed color of the 256-color table for each: the basic palette has no orange, and its magenta is too close to the pink of `ON`.
 
 Claude Code sends the limits for a subscription login only. With an API key the row shows the model and the context window.
 
 In a narrow terminal the bars get shorter, then they go away, then the times go away, then the ultracode part goes away. The fit counts one column for each character, so a model name with wide characters can make the row wider than the terminal.
 
 ## The Ultracode Part
+
+The `ON` or `OFF` at the end of the row is the ultracode switch. The row shows it with no word in front.
 
 Claude Code does not tell a status line if ultracode is on. So the script reads the key `ultracode` from your settings files. The nearest file wins, and a file larger than 1 MB is passed over:
 
