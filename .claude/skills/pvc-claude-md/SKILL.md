@@ -3,7 +3,7 @@ name: pvc-claude-md
 description: "Audits a project's CLAUDE.md on four pillars and proposes small diffs that it writes only after approval. Also captures session learnings into the file as dated lab notes and rotates lab notes past the latest 10 into LABS.md. Use when asked to 'audit my CLAUDE.md', 'review claude.md', 'check CLAUDE.md', 'is my CLAUDE.md good', 'improve CLAUDE.md', 'update CLAUDE.md with what we learned', 'my project instructions file is a mess', 'rotate lab notes', 'compact lab notes' or 'archive old lab notes'. Not for closing a whole work set; that is pvc-end-set. Not for a first CLAUDE.md, which /init writes, or for auto memory."
 metadata:
   author: pvc
-  version: "0.0.16"
+  version: "0.0.20"
 license: MIT
 ---
 
@@ -63,7 +63,7 @@ If the count is exactly 10 after adding the new entry, no rotation needed.
 
 ### Manual rotation command
 
-If user says "rotate lab notes", "compact lab notes", or "archive old lab notes" without proposing new content, run the rotation WITHOUT adding a new entry. Move any entries beyond the latest 10 to `LABS.md` and update the header count. Useful after manual editing or to fix drift.
+If user says "rotate lab notes", "compact lab notes", or "archive old lab notes" without proposing new content, run the rotation WITHOUT adding a new entry and without an audit. Move any entries beyond the latest 10 to `LABS.md` and update the header count. Show the move as a diff first, in the form of Step 4, and write after approval. Useful after manual editing or to fix drift.
 
 ### First-time setup
 
@@ -74,17 +74,25 @@ If `LABS.md` doesn't exist:
 
 ## Workflow
 
-The shell commands below are for Bash. Where Claude has the Glob and Grep tools (the default on Windows), use those instead, with the same file names and the same skipped folders. Glob returns at most 100 files, so with Glob, search one file name at a time, drop paths under `node_modules` and `.git`, and narrow the pattern when the result says it was cut.
+Pick the route from the request before any step:
+
+1. **Audit** (audit, review, check or improve a CLAUDE.md): run Steps 1 to 5.
+2. **Capture** ("update CLAUDE.md with what we learned", or a session end): find the CLAUDE.md the lesson belongs to, the one with the Lab notes section or else the one at the project root, then run Steps 3 to 5. Print no scores and no audit report.
+3. **Rotation** ("rotate lab notes", "compact lab notes", "archive old lab notes"): run only the manual rotation above.
+
+The shell commands below are for Bash. Where Claude has the Glob and Grep tools (the default on Windows), use those instead, with the same file names and the same skipped folders. Glob returns at most 100 files, so with Glob, search one file name at a time, drop paths under `node_modules`, `.git` and `.claude/worktrees`, and narrow the pattern when the result says it was cut.
 
 ### Step 1: Discovery
 
-Find all CLAUDE.md, LABS.md, CLAUDE.local.md and AGENTS.md files:
+Find all CLAUDE.md, LABS.md, CLAUDE.local.md and AGENTS.md files, and the rule files under `.claude/rules/`:
 
 ```bash
-find . \( -name node_modules -o -name .git \) -prune -o -type f \( -name "CLAUDE.md" -o -name "LABS.md" -o -name "CLAUDE.local.md" -o -name "AGENTS.md" \) -print 2>/dev/null
+find . \( -name node_modules -o -name .git -o -path "*/.claude/worktrees" \) -prune -o -type f \( -name "CLAUDE.md" -o -name "LABS.md" -o -name "CLAUDE.local.md" -o -name "AGENTS.md" -o -path "*/.claude/rules/*.md" \) -print 2>/dev/null
 ```
 
 `CLAUDE.md` is shared with the team. `LABS.md` is the lab notes archive (also shared, but rarely loaded into context). `CLAUDE.local.md` is personal, but git ignores it only when an ignore rule lists it, such as a line in the project's `.gitignore`. `AGENTS.md` is the instruction file other coding agents read; Step 3 says when it matters.
+
+A rule file under `.claude/rules/` with no `paths` field in its frontmatter loads at launch with the same priority as `.claude/CLAUDE.md`. Read the rule files beside each CLAUDE.md before scoring: a style rule or a gotcha kept there counts for its pillar, and the audit proposes no addition that a rule already holds. A checkout under `.claude/worktrees/` is a copy of the project for another session: skip its files, say in the report which worktrees were skipped, and propose no edit inside them.
 
 With `AGENTS.md` and no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` in the folder or above it, Claude Code (v2.1.277 or later) already reads `AGENTS.md` as the project instructions. Say so, and offer to audit `AGENTS.md` on the same four pillars. Offer a new `CLAUDE.md` only with the import of `AGENTS.md` as its first line, since any other first `CLAUDE.md` stops `AGENTS.md` from loading; Step 3 gives the import line. With both, and no such import in the `CLAUDE.md`, note that `AGENTS.md` does not load by default, and offer the import line as the first line of the `CLAUDE.md` next to `AGENTS.md`.
 
@@ -110,6 +118,9 @@ Read each CLAUDE.md from disk with the Read tool, since the copy loaded into the
 
 ### Recommendations
 [Specific additions for each missing or weak pillar]
+
+### Removal candidates
+[Each line Claude can find in the repo or already sees, quoted, with its reason]
 ```
 
 ### Step 2b: Sync Project Structure (if markers present)
@@ -120,7 +131,7 @@ If a CLAUDE.md holds a `STRUCTURE:BEGIN` marker, read [references/structure-sync
 
 If the user is at session end or asks to "update CLAUDE.md with what we learned", reflect on what was missing earlier in the session: bash commands discovered, patterns followed, gotchas hit, workflows that worked or failed. Draft additions that would help future sessions.
 
-Before drafting, strip private detail from every proposed line: API keys, tokens, passwords, connection strings, absolute machine paths (home folders, drive letters), and client or customer names. CLAUDE.md is committed and shared. When a lesson needs a private detail to make sense, propose it for `CLAUDE.local.md` instead and say so in the diff. Before the first write to `CLAUDE.local.md`, run `git check-ignore -q CLAUDE.local.md`. Exit 0 means it is ignored and untracked. Any other result: add the line `CLAUDE.local.md` to the project's `.gitignore` in the same diff, and when `git ls-files CLAUDE.local.md` prints the path, the file is tracked already, so keep the private detail out of it and tell the user.
+Before drafting, strip private detail from every proposed line. Secrets (API keys, tokens, passwords, connection strings) never go into any instruction file, `CLAUDE.local.md` included, since Claude Code loads these files into every session and into subagents: name the environment variable or the secret store that holds the value instead. Absolute machine paths (home folders, drive letters) and client or customer names stay out of CLAUDE.md, which is committed and shared. When a lesson needs one of those to make sense, propose it for `CLAUDE.local.md` instead and say so in the diff. Before the first write to `CLAUDE.local.md`, run `git check-ignore -q CLAUDE.local.md`. Exit 0 means it is ignored and untracked. Any other result: add the line `CLAUDE.local.md` to the project's `.gitignore` in the same diff, and when `git ls-files CLAUDE.local.md` prints the path, the file is tracked already, so keep the private detail out of it and tell the user.
 
 By default, Claude Code reads `AGENTS.md` as the project instructions only while no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` sits in the working folder or above it, so in a project that relies on `AGENTS.md`, the first such file stops that. Tell the user before that first write, and keep `AGENTS.md` loaded. Put a new `CLAUDE.md` next to `AGENTS.md` and make its first line the import: the at sign with `AGENTS.md` right after it, no space. For a `CLAUDE.local.md` alone, point to the `/config` setting **Project instructions** with the value `claude-md-and-agents-md`.
 
@@ -128,14 +139,15 @@ For each new lab note: follow the rotation steps above so CLAUDE.md stays at <=1
 
 ### Step 4: Propose Targeted Updates
 
-Show diffs before editing. For each addition:
+Show diffs before editing. For each addition or removal:
 
 ````markdown
 ### Update: ./CLAUDE.md
 **Why:** [one-line reason]
 
 ```diff
-+ [the addition, kept brief]
++ [an addition, kept brief]
+- [a removal candidate, quoted as it stands]
 ```
 ````
 
